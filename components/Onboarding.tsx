@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useAppState } from "@/components/AppStateProvider";
+import { PriorityLevel } from "@/lib/types";
 import { generateId, todayKey } from "@/lib/utils";
 
 const questions = [
@@ -14,11 +15,39 @@ const questions = [
     key: "worry",
     label: "What are you most worried about right now?",
   },
-  {
-    key: "bigGoal",
-    label: "What's one big goal you have for the next year?",
-  },
 ] as const;
+
+type GoalEntry = {
+  id: string;
+  title: string;
+  description: string;
+  lifeAreaId: string;
+  priority: PriorityLevel;
+  targetDate: string;
+  isStarred: boolean;
+};
+
+type HabitEntry = {
+  id: string;
+  name: string;
+  description: string;
+  lifeAreaId: string;
+};
+
+const emptyGoalDraft = (): Omit<GoalEntry, "id"> => ({
+  title: "",
+  description: "",
+  lifeAreaId: "",
+  priority: "medium",
+  targetDate: "",
+  isStarred: false,
+});
+
+const emptyHabitDraft = (): Omit<HabitEntry, "id"> => ({
+  name: "",
+  description: "",
+  lifeAreaId: "",
+});
 
 export const OnboardingFlow = () => {
   const { state, updateState } = useAppState();
@@ -35,10 +64,50 @@ export const OnboardingFlow = () => {
     return defaults;
   });
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [goalEntries, setGoalEntries] = useState<GoalEntry[]>([]);
+  const [goalDraft, setGoalDraft] = useState(emptyGoalDraft());
+  const [habitEntries, setHabitEntries] = useState<HabitEntry[]>([]);
+  const [habitDraft, setHabitDraft] = useState(emptyHabitDraft());
+
+  const addGoalEntry = () => {
+    if (!goalDraft.title.trim()) return;
+    setGoalEntries((prev) => [
+      ...prev,
+      {
+        id: generateId(),
+        ...goalDraft,
+      },
+    ]);
+    setGoalDraft(emptyGoalDraft());
+  };
+
+  const removeGoalEntry = (id: string) => {
+    setGoalEntries((prev) => prev.filter((goal) => goal.id !== id));
+  };
+
+  const addHabitEntry = () => {
+    if (!habitDraft.name.trim()) return;
+    setHabitEntries((prev) => [
+      ...prev,
+      {
+        id: generateId(),
+        ...habitDraft,
+      },
+    ]);
+    setHabitDraft(emptyHabitDraft());
+  };
+
+  const removeHabitEntry = (id: string) => {
+    setHabitEntries((prev) => prev.filter((habit) => habit.id !== id));
+  };
 
   const handleComplete = () => {
     const now = new Date().toISOString();
     const today = todayKey();
+    const endOfYear = new Date(new Date().getFullYear(), 11, 31)
+      .toISOString()
+      .slice(0, 10);
+
     updateState((prev) => ({
       ...prev,
       profile: { ...prev.profile, onboardingCompletedAt: now },
@@ -63,6 +132,33 @@ export const OnboardingFlow = () => {
           },
           createdAt: now,
         },
+      ],
+      goals: [
+        ...prev.goals,
+        ...goalEntries.map((goal) => ({
+          id: generateId(),
+          title: goal.title.trim(),
+          description: goal.description?.trim() || undefined,
+          lifeAreaId: goal.lifeAreaId ? Number(goal.lifeAreaId) : undefined,
+          priority: goal.priority,
+          targetDate: goal.targetDate || endOfYear,
+          status: "active" as const,
+          isStarred: goal.isStarred,
+          createdAt: now,
+        })),
+      ],
+      habits: [
+        ...prev.habits,
+        ...habitEntries.map((habit) => ({
+          id: generateId(),
+          name: habit.name.trim(),
+          description: habit.description?.trim() || undefined,
+          lifeAreaId: habit.lifeAreaId ? Number(habit.lifeAreaId) : undefined,
+          cadence: "daily" as const,
+          frequencyPerPeriod: 1,
+          isActive: true,
+          createdAt: now,
+        })),
       ],
     }));
   };
@@ -150,48 +246,278 @@ export const OnboardingFlow = () => {
       );
     }
 
-    return (
-      <div className="w-full max-w-2xl space-y-6">
-        <div>
-          <p className="text-2xl font-semibold text-slate-900">
-            Quick reflection
-          </p>
-          <p className="text-slate-600">
-            Capture what matters before we build your plan.
-          </p>
+    if (step === 3) {
+      return (
+        <div className="w-full max-w-2xl space-y-6">
+          <div>
+            <p className="text-2xl font-semibold text-slate-900">
+              Quick reflection
+            </p>
+            <p className="text-slate-600">
+              Capture what matters before we build your plan.
+            </p>
+          </div>
+          <div className="space-y-4">
+            {questions.map((q) => (
+              <label key={q.key} className="block">
+                <span className="text-sm font-medium text-slate-800">
+                  {q.label}
+                </span>
+                <textarea
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+                  rows={3}
+                  value={answers[q.key] ?? ""}
+                  onChange={(e) =>
+                    setAnswers((prev) => ({
+                      ...prev,
+                      [q.key]: e.target.value,
+                    }))
+                  }
+                />
+              </label>
+            ))}
+          </div>
+          <div className="flex gap-4">
+            <button
+              className="flex-1 rounded-xl border border-slate-200 py-3 text-slate-700"
+              onClick={() => setStep(2)}
+            >
+              Back
+            </button>
+            <button
+              className="flex-1 rounded-xl bg-slate-900 py-3 text-white"
+              onClick={() => setStep(4)}
+            >
+              Next: Year goals
+            </button>
+          </div>
         </div>
-        <div className="space-y-4">
-          {questions.map((q) => (
-            <label key={q.key} className="block">
-              <span className="text-sm font-medium text-slate-800">
-                {q.label}
-              </span>
-              <textarea
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
-                rows={3}
-                value={answers[q.key] ?? ""}
+      );
+    }
+
+    if (step === 4) {
+      return (
+        <div className="w-full max-w-3xl space-y-6">
+          <div>
+            <p className="text-2xl font-semibold text-slate-900">
+              Sketch your big yearly goals
+            </p>
+            <p className="text-slate-600">
+              Up to three “big rocks” you care about hitting this year.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {goalEntries.map((goal) => {
+              const areaName = goal.lifeAreaId
+                ? lifeAreas.find((area) => area.id === Number(goal.lifeAreaId))
+                    ?.name
+                : undefined;
+              return (
+                <div
+                  key={goal.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4"
+                >
+                  <div>
+                    <p className="text-base font-semibold text-slate-900">
+                      {goal.title}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {goal.priority.toUpperCase()} · {areaName ?? "Any area"}
+                    </p>
+                  </div>
+                  <button
+                    className="text-sm text-slate-500 hover:text-slate-900"
+                    onClick={() => removeGoalEntry(goal.id)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              );
+            })}
+            {goalEntries.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+                No goals added yet. You can always adjust later.
+              </div>
+            )}
+          </div>
+          <div className="rounded-2xl border border-slate-100 bg-white p-4 space-y-3">
+            <p className="text-sm font-semibold text-slate-700">Add yearly goal</p>
+            <input
+              className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+              placeholder="Title"
+              value={goalDraft.title}
+              onChange={(e) => setGoalDraft((prev) => ({ ...prev, title: e.target.value }))}
+            />
+            <textarea
+              className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+              rows={2}
+              placeholder="Description (optional)"
+              value={goalDraft.description}
+              onChange={(e) =>
+                setGoalDraft((prev) => ({ ...prev, description: e.target.value }))
+              }
+            />
+            <div className="grid gap-3 md:grid-cols-3">
+              <select
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                value={goalDraft.lifeAreaId}
                 onChange={(e) =>
-                  setAnswers((prev) => ({
+                  setGoalDraft((prev) => ({ ...prev, lifeAreaId: e.target.value }))
+                }
+              >
+                <option value="">Any area</option>
+                {lifeAreas.map((area) => (
+                  <option key={area.id} value={area.id}>
+                    {area.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                value={goalDraft.priority}
+                onChange={(e) =>
+                  setGoalDraft((prev) => ({
                     ...prev,
-                    [q.key]: e.target.value,
+                    priority: e.target.value as PriorityLevel,
                   }))
                 }
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+              <input
+                type="date"
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                value={goalDraft.targetDate}
+                onChange={(e) =>
+                  setGoalDraft((prev) => ({ ...prev, targetDate: e.target.value }))
+                }
               />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <input
+                type="checkbox"
+                checked={goalDraft.isStarred}
+                onChange={(e) =>
+                  setGoalDraft((prev) => ({ ...prev, isStarred: e.target.checked }))
+                }
+              />
+              Make this one of my “Big 3”
             </label>
+            <button
+              className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white"
+              onClick={addGoalEntry}
+            >
+              + Add goal
+            </button>
+          </div>
+          <div className="flex gap-4">
+            <button
+              className="flex-1 rounded-xl border border-slate-200 py-3 text-slate-700"
+              onClick={() => setStep(3)}
+            >
+              Back
+            </button>
+            <button
+              className="flex-1 rounded-xl bg-slate-900 py-3 text-white"
+              onClick={() => setStep(5)}
+            >
+              Next: Daily habits
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-full max-w-3xl space-y-6">
+        <div>
+          <p className="text-2xl font-semibold text-slate-900">
+            Daily habits to reinforce
+          </p>
+          <p className="text-slate-600">
+            Capture the simple reps you want to track every day.
+          </p>
+        </div>
+        <div className="space-y-3">
+          {habitEntries.map((habit) => (
+            <div
+              key={habit.id}
+              className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-4"
+            >
+              <div>
+                <p className="text-base font-semibold text-slate-900">
+                  {habit.name}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {habit.description || "—"}
+                </p>
+              </div>
+              <button
+                className="text-sm text-slate-500 hover:text-slate-900"
+                onClick={() => removeHabitEntry(habit.id)}
+              >
+                Remove
+              </button>
+            </div>
           ))}
+          {habitEntries.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+              No habits yet. Add a couple you want to repeat daily.
+            </div>
+          )}
+        </div>
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 space-y-3">
+          <p className="text-sm font-semibold text-slate-700">Add daily habit</p>
+          <input
+            className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+            placeholder="Habit name"
+            value={habitDraft.name}
+            onChange={(e) => setHabitDraft((prev) => ({ ...prev, name: e.target.value }))}
+          />
+          <textarea
+            className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+            rows={2}
+            placeholder="Description (optional)"
+            value={habitDraft.description}
+            onChange={(e) =>
+              setHabitDraft((prev) => ({ ...prev, description: e.target.value }))
+            }
+          />
+          <select
+            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            value={habitDraft.lifeAreaId}
+            onChange={(e) =>
+              setHabitDraft((prev) => ({ ...prev, lifeAreaId: e.target.value }))
+            }
+          >
+            <option value="">Any area</option>
+            {lifeAreas.map((area) => (
+              <option key={area.id} value={area.id}>
+                {area.name}
+              </option>
+            ))}
+          </select>
+          <button
+            className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white"
+            onClick={addHabitEntry}
+          >
+            + Add habit
+          </button>
         </div>
         <div className="flex gap-4">
           <button
             className="flex-1 rounded-xl border border-slate-200 py-3 text-slate-700"
-            onClick={() => setStep(2)}
+            onClick={() => setStep(4)}
           >
             Back
           </button>
           <button
-            className="flex-1 rounded-xl bg-emerald-600 py-3 text-white"
+            className="flex-1 rounded-xl bg-slate-900 py-3 text-white"
             onClick={handleComplete}
           >
-            Launch my dashboard
+            Finish & launch dashboard
           </button>
         </div>
       </div>

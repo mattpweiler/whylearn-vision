@@ -6,6 +6,7 @@ import {
   endOfWeek,
   formatDisplayDate,
   formatDateKey,
+  formatDateWithWeekday,
   generateId,
   startOfWeek,
   tasksByDateWithinRange,
@@ -41,6 +42,7 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
   );
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [selectedDay, setSelectedDay] = useState(todayKey());
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
 
   const groupedTasks = useMemo(
     () =>
@@ -122,6 +124,17 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
     setNewTaskTitle("");
   };
 
+  const handleDrop = (dateKey: string) => {
+    if (!draggingTaskId) return;
+    const task = state.tasks.find((t) => t.id === draggingTaskId);
+    if (!task || task.scheduledFor === dateKey) {
+      setDraggingTaskId(null);
+      return;
+    }
+    changeTaskDay(task, dateKey);
+    setDraggingTaskId(null);
+  };
+
   return (
     <div className="space-y-6">
       <section className="grid gap-6 lg:grid-cols-2">
@@ -184,13 +197,22 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
           {weekDates.map((dateKey) => (
             <div key={dateKey}>
               <p className="text-sm font-semibold text-slate-500">
-                {formatDisplayDate(dateKey)}
+                {formatDateWithWeekday(dateKey)}
               </p>
-              <div className="mt-2 space-y-2">
+              <div
+                className={`mt-2 space-y-2 rounded-2xl border border-transparent p-2 ${
+                  draggingTaskId ? "border-dashed border-emerald-200 bg-emerald-50/40" : ""
+                }`}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => handleDrop(dateKey)}
+              >
                 {(groupedTasks[dateKey] ?? []).map((task) => (
                   <div
                     key={task.id}
                     className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-100 p-4"
+                    draggable
+                    onDragStart={() => setDraggingTaskId(task.id)}
+                    onDragEnd={() => setDraggingTaskId(null)}
                   >
                     <label className="flex flex-1 items-center gap-3 text-sm">
                       <input
@@ -209,7 +231,7 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
                     >
                       {weekDates.map((option) => (
                         <option key={option} value={option}>
-                          {formatDisplayDate(option)}
+                          {formatDateWithWeekday(option)}
                         </option>
                       ))}
                     </select>
@@ -234,7 +256,7 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
             <option value="">Pick a day</option>
             {weekDates.map((date) => (
               <option key={date} value={date}>
-                {formatDisplayDate(date)}
+                {formatDateWithWeekday(date)}
               </option>
             ))}
           </select>

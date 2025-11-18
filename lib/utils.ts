@@ -1,6 +1,6 @@
 import { Task, UserSettings } from "@/lib/types";
 
-export const STORAGE_KEY = "whylearn_lifeos_state_v1";
+export const STORAGE_KEY = "whylearn_Vision_state_v1";
 
 export const generateId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -22,6 +22,17 @@ export const formatDisplayDate = (value?: string) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+};
+
+export const formatDateWithWeekday = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, {
+    weekday: "long",
     month: "short",
     day: "numeric",
   });

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "WhyLearn Vision",
-  description: "Single-user demo of the WhyLearn LifeOS dashboard.",
+  description: "Single-user demo of the WhyLearn Vision dashboard.",
 };
 
 export default function RootLayout({

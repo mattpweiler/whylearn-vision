@@ -36,6 +36,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
   const [editingFocus, setEditingFocus] = useState(false);
 
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
 
   const saveFocus = () => {
     if (!focusDraft.trim()) return;
@@ -98,6 +99,32 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
     }));
   };
 
+  const reorderTasks = (targetIndex: number) => {
+    if (!draggingTaskId) return;
+    const draggedTask = todaysTasks.find((task) => task.id === draggingTaskId);
+    if (!draggedTask) {
+      setDraggingTaskId(null);
+      return;
+    }
+    const currentIndex = todaysTasks.findIndex((task) => task.id === draggingTaskId);
+    if (currentIndex === targetIndex) {
+      setDraggingTaskId(null);
+      return;
+    }
+    const reordered = [...todaysTasks];
+    reordered.splice(currentIndex, 1);
+    reordered.splice(targetIndex, 0, draggedTask);
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((task) => {
+        const repositionedIndex = reordered.findIndex((item) => item.id === task.id);
+        if (repositionedIndex === -1) return task;
+        return { ...task, orderIndex: repositionedIndex + 1 };
+      }),
+    }));
+    setDraggingTaskId(null);
+  };
+
   const addQuickTask = () => {
     const title = newTaskTitle.trim();
     if (!title) return;
@@ -147,23 +174,6 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
       return { ...prev, habitLogs: logs };
     });
   };
-
-  const latestScores = useMemo(() => {
-    const map: Record<number, { score: number; createdAt: string }> = {};
-    state.lifeAreas.forEach((area) => {
-      map[area.id] = { score: 0, createdAt: "" };
-    });
-    state.lifeAreaScores.forEach((entry) => {
-      const existing = map[entry.lifeAreaId];
-      if (!existing || existing.createdAt < entry.createdAt) {
-        map[entry.lifeAreaId] = {
-          score: entry.score,
-          createdAt: entry.createdAt,
-        };
-      }
-    });
-    return map;
-  }, [state.lifeAreas, state.lifeAreaScores]);
 
   return (
     <div className="space-y-6">
@@ -229,46 +239,70 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
               forward.
             </div>
           )}
-          {todaysTasks.map((task) => (
-            <div
-              key={task.id}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-100 p-4"
-            >
-              <label className="flex flex-1 items-center gap-3 text-sm">
-                <input
-                  type="checkbox"
-                  checked={task.status === "done"}
-                  onChange={() => toggleTask(task)}
-                />
-                <div>
-                  <p className="font-medium text-slate-900">{task.title}</p>
-                  <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
-                    {task.priority && (
-                      <span className="rounded-full bg-slate-100 px-2 py-1 capitalize">
-                        {task.priority}
-                      </span>
-                    )}
-                    {task.lifeAreaId && (
-                      <span className="rounded-full bg-slate-100 px-2 py-1">
-                        {lifeAreaById[task.lifeAreaId]}
-                      </span>
-                    )}
-                    {task.dueDate && task.dueDate !== today && (
-                      <span className="rounded-full bg-slate-100 px-2 py-1">
-                        Due {formatDisplayDate(task.dueDate)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </label>
-              <button
-                className="text-xs font-medium text-slate-500 hover:text-slate-900"
-                onClick={() => moveToTomorrow(task)}
+          {todaysTasks.map((task, index) => {
+            const isDone = task.status === "done";
+            return (
+              <div
+                key={task.id}
+                className={`flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-4 ${
+                  isDone
+                    ? "border-emerald-100 bg-emerald-50/70"
+                    : "border-slate-100"
+                }`}
+                draggable
+                onDragStart={() => setDraggingTaskId(task.id)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => reorderTasks(index)}
+                onDragEnd={() => setDraggingTaskId(null)}
               >
-                Move to tomorrow ↗
-              </button>
-            </div>
-          ))}
+                <label className="flex flex-1 items-center gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={isDone}
+                    onChange={() => toggleTask(task)}
+                  />
+                  <div>
+                    <p
+                      className={`font-medium ${
+                        isDone ? "text-emerald-800" : "text-slate-900"
+                      }`}
+                    >
+                      {task.title}
+                    </p>
+                    <div
+                      className={`mt-1 flex flex-wrap gap-2 text-xs ${
+                        isDone ? "text-emerald-700" : "text-slate-500"
+                      }`}
+                    >
+                      {task.priority && (
+                        <span className="rounded-full bg-slate-100 px-2 py-1 capitalize">
+                          {task.priority}
+                        </span>
+                      )}
+                      {task.lifeAreaId && (
+                        <span className="rounded-full bg-slate-100 px-2 py-1">
+                          {lifeAreaById[task.lifeAreaId]}
+                        </span>
+                      )}
+                      {task.dueDate && task.dueDate !== today && (
+                        <span className="rounded-full bg-slate-100 px-2 py-1">
+                          Due {formatDisplayDate(task.dueDate)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </label>
+                <button
+                  className={`text-xs font-medium ${
+                    isDone ? "text-emerald-700" : "text-slate-500 hover:text-slate-900"
+                  }`}
+                  onClick={() => moveToTomorrow(task)}
+                >
+                  Move to tomorrow ↗
+                </button>
+              </div>
+            );
+          })}
         </div>
         <div className="mt-4 flex gap-3">
           <input
@@ -321,29 +355,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
         </div>
       </section>
 
-      {state.settings.showLifeAreaSummaryOnToday && (
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-lg font-semibold text-slate-900">
-            Life areas snapshot
-          </p>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
-            {state.lifeAreas.map((area) => (
-              <div
-                key={area.id}
-                className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
-              >
-                <p className="text-sm font-medium text-slate-600">{area.name}</p>
-                <p className="mt-2 text-3xl font-semibold text-slate-900">
-                  {latestScores[area.id]?.score || "–"}
-                </p>
-                <p className="text-xs text-slate-500">
-                  Updated {formatDisplayDate(latestScores[area.id]?.createdAt)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Life areas snapshot removed per latest UX iteration */}
     </div>
   );
 };

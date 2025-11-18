@@ -22,7 +22,7 @@ export const Sidebar = ({
     <aside className="hidden w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex">
       <div className="px-2">
         <p className="text-lg font-semibold text-slate-900">WhyLearn Vision</p>
-        <p className="text-sm text-slate-500">LifeOS demo</p>
+        <p className="text-sm text-slate-500">Vision demo</p>
       </div>
       <nav className="mt-8 space-y-1">
         {navItems.map((item) => {

@@ -15,11 +15,11 @@ import { ViewKey } from "@/lib/types";
 const meta: Record<ViewKey, { title: string; subtitle: string }> = {
   today: {
     title: "Today",
-    subtitle: "Micro focus, one day at a time.",
+    subtitle: "Just do these things TODAY. Commit to them.",
   },
   week: {
     title: "This Week",
-    subtitle: "Lock in your rhythm and top 3 priorities.",
+    subtitle: "Lock in your rhythm and top 3 priorities this Week",
   },
   month: {
     title: "This Month",
@@ -27,7 +27,7 @@ const meta: Record<ViewKey, { title: string; subtitle: string }> = {
   },
   year: {
     title: "Year Goals",
-    subtitle: "Big rocks that define your year.",
+    subtitle: "Only You Decide How Successful Your Year Is",
   },
   direction: {
     title: "Direction & Purpose",

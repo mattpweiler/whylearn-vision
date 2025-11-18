@@ -25,7 +25,7 @@ export interface LifeAreaScore {
 export type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
 export type PriorityLevel = "low" | "medium" | "high";
 export type GoalStatus = "active" | "completed" | "archived";
-export type HabitCadence = "daily" | "weekly" | "custom";
+export type HabitCadence = "daily" | "weekly" | "monthly" | "custom";
 
 export interface Goal {
   id: string;
