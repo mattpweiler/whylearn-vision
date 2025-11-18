@@ -1,0 +1,145 @@
+export type LifeAreaKey =
+  | "career"
+  | "money"
+  | "health"
+  | "relationships"
+  | "mental"
+  | "purpose";
+
+export interface LifeArea {
+  id: number;
+  key: LifeAreaKey;
+  name: string;
+  description?: string;
+  sortOrder: number;
+}
+
+export interface LifeAreaScore {
+  id: string;
+  lifeAreaId: number;
+  score: number;
+  note?: string;
+  createdAt: string;
+}
+
+export type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
+export type PriorityLevel = "low" | "medium" | "high";
+export type GoalStatus = "active" | "completed" | "archived";
+export type HabitCadence = "daily" | "weekly" | "custom";
+
+export interface Goal {
+  id: string;
+  title: string;
+  description?: string;
+  lifeAreaId?: number;
+  status: GoalStatus;
+  priority: PriorityLevel;
+  targetDate?: string;
+  isStarred: boolean;
+  createdAt: string;
+}
+
+export interface Habit {
+  id: string;
+  name: string;
+  description?: string;
+  lifeAreaId?: number;
+  goalId?: string;
+  cadence: HabitCadence;
+  frequencyPerPeriod?: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface HabitLog {
+  id: string;
+  habitId: string;
+  logDate: string;
+  completed: boolean;
+  createdAt: string;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  priority: PriorityLevel;
+  lifeAreaId?: number;
+  goalId?: string;
+  habitId?: string;
+  dueDate?: string;
+  scheduledFor?: string;
+  orderIndex: number;
+  createdAt: string;
+}
+
+export type ReflectionType =
+  | "onboarding"
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "crisis";
+
+export interface Reflection {
+  id: string;
+  type: ReflectionType;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  content: any;
+  moodScore?: number;
+  energyScore?: number;
+  primaryLifeAreaId?: number;
+  createdAt: string;
+}
+
+export type AiMessageRole = "user" | "assistant";
+
+export interface AiMessage {
+  id: string;
+  role: AiMessageRole;
+  content: string;
+  createdAt: string;
+}
+
+export interface AiSession {
+  id: string;
+  topic?: string;
+  messages: AiMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserSettings {
+  defaultHomeView: "today" | "week" | "month" | "year" | "direction";
+  weekStartDay: 0 | 1;
+  showLifeAreaSummaryOnToday: boolean;
+  autoGenerateTasksFromAi: boolean;
+}
+
+export interface Profile {
+  displayName: string;
+  timezone: string;
+  onboardingCompletedAt?: string;
+}
+
+export interface AppState {
+  profile: Profile;
+  settings: UserSettings;
+  lifeAreas: LifeArea[];
+  lifeAreaScores: LifeAreaScore[];
+  goals: Goal[];
+  habits: Habit[];
+  habitLogs: HabitLog[];
+  tasks: Task[];
+  reflections: Reflection[];
+  aiSessions: AiSession[];
+  dailyFocus: Record<string, string>;
+}
+
+export type ViewKey =
+  | "today"
+  | "week"
+  | "month"
+  | "year"
+  | "direction"
+  | "settings";
