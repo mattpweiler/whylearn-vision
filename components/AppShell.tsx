@@ -5,6 +5,7 @@ import { useAppState } from "@/components/AppStateProvider";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { PageHeader } from "@/components/layout/Header";
 import { DirectionView } from "@/components/views/DirectionView";
+import { FinancialPlannerView } from "@/components/views/FinancialPlannerView";
 import { MonthView } from "@/components/views/MonthView";
 import { SettingsView } from "@/components/views/SettingsView";
 import { TodayView } from "@/components/views/TodayView";
@@ -33,6 +34,10 @@ const meta: Record<ViewKey, { title: string; subtitle: string }> = {
     title: "Direction & Purpose",
     subtitle: "Life areas, reflections, and AI mentor.",
   },
+  financial: {
+    title: "Financial Planner",
+    subtitle: "Stay close to your cash flow and net worth trajectory.",
+  },
   settings: {
     title: "Settings",
     subtitle: "Profile, preferences, and defaults.",
@@ -45,6 +50,7 @@ const viewOrder: ViewKey[] = [
   "month",
   "year",
   "direction",
+  "financial",
   "settings",
 ];
 
@@ -66,6 +72,10 @@ export const AppShell = () => {
         return <YearGoalsView state={state} updateState={updateState} />;
       case "direction":
         return <DirectionView state={state} updateState={updateState} />;
+      case "financial":
+        return (
+          <FinancialPlannerView state={state} updateState={updateState} />
+        );
       case "settings":
         return <SettingsView state={state} updateState={updateState} />;
       case "today":

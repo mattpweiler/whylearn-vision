@@ -8,6 +8,7 @@ const navItems: { key: ViewKey; label: string; icon: string }[] = [
   { key: "month", label: "This Month", icon: "🗓️" },
   { key: "year", label: "Year Goals", icon: "🏔️" },
   { key: "direction", label: "Direction", icon: "🧭" },
+  { key: "financial", label: "Financial", icon: "💸" },
   { key: "settings", label: "Settings", icon: "⚙️" },
 ];
 
