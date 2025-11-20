@@ -37,6 +37,13 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
 
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [taskEdit, setTaskEdit] = useState({
+    title: "",
+    priority: "medium" as Task["priority"],
+    lifeAreaId: "",
+    dueDate: "",
+  });
 
   const saveFocus = () => {
     if (!focusDraft.trim()) return;
@@ -99,6 +106,13 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
     }));
   };
 
+  const deleteTask = (taskId: string) => {
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.filter((task) => task.id !== taskId),
+    }));
+  };
+
   const reorderTasks = (targetIndex: number) => {
     if (!draggingTaskId) return;
     const draggedTask = todaysTasks.find((task) => task.id === draggingTaskId);
@@ -145,6 +159,39 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
       ],
     }));
     setNewTaskTitle("");
+  };
+
+  const startEdit = (task: Task) => {
+    setEditingTaskId(task.id);
+    setTaskEdit({
+      title: task.title,
+      priority: task.priority,
+      lifeAreaId: task.lifeAreaId ? task.lifeAreaId.toString() : "",
+      dueDate: task.dueDate ?? "",
+    });
+  };
+
+  const saveEdit = () => {
+    if (!editingTaskId) return;
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((task) =>
+        task.id === editingTaskId
+          ? {
+              ...task,
+              title: taskEdit.title,
+              priority: taskEdit.priority,
+              lifeAreaId: taskEdit.lifeAreaId ? Number(taskEdit.lifeAreaId) : undefined,
+              dueDate: taskEdit.dueDate || undefined,
+            }
+          : task
+      ),
+    }));
+    setEditingTaskId(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingTaskId(null);
   };
 
   const todaysHabits = state.habits.filter(
@@ -255,51 +302,133 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
                 onDrop={() => reorderTasks(index)}
                 onDragEnd={() => setDraggingTaskId(null)}
               >
-                <label className="flex flex-1 items-center gap-3 text-sm">
+                <div className="flex flex-1 items-center gap-3 text-sm">
                   <input
                     type="checkbox"
                     checked={isDone}
                     onChange={() => toggleTask(task)}
                   />
-                  <div>
-                    <p
-                      className={`font-medium ${
-                        isDone ? "text-emerald-800" : "text-slate-900"
-                      }`}
-                    >
-                      {task.title}
-                    </p>
-                    <div
-                      className={`mt-1 flex flex-wrap gap-2 text-xs ${
-                        isDone ? "text-emerald-700" : "text-slate-500"
-                      }`}
-                    >
-                      {task.priority && (
-                        <span className="rounded-full bg-slate-100 px-2 py-1 capitalize">
-                          {task.priority}
-                        </span>
-                      )}
-                      {task.lifeAreaId && (
-                        <span className="rounded-full bg-slate-100 px-2 py-1">
-                          {lifeAreaById[task.lifeAreaId]}
-                        </span>
-                      )}
-                      {task.dueDate && task.dueDate !== today && (
-                        <span className="rounded-full bg-slate-100 px-2 py-1">
-                          Due {formatDisplayDate(task.dueDate)}
-                        </span>
-                      )}
-                    </div>
+                  <div className="w-full">
+                    {editingTaskId === task.id ? (
+                      <div className="space-y-2 rounded-2xl border border-slate-200 p-3">
+                        <input
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                          value={taskEdit.title}
+                          onChange={(e) =>
+                            setTaskEdit((prev) => ({ ...prev, title: e.target.value }))
+                          }
+                        />
+                        <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+                          <select
+                            className="rounded-xl border border-slate-200 px-2 py-1 capitalize"
+                            value={taskEdit.priority}
+                            onChange={(e) =>
+                              setTaskEdit((prev) => ({
+                                ...prev,
+                                priority: e.target.value as Task["priority"],
+                              }))
+                            }
+                          >
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                          </select>
+                          <select
+                            className="rounded-xl border border-slate-200 px-2 py-1"
+                            value={taskEdit.lifeAreaId}
+                            onChange={(e) =>
+                              setTaskEdit((prev) => ({ ...prev, lifeAreaId: e.target.value }))
+                            }
+                          >
+                            <option value="">Any area</option>
+                            {state.lifeAreas.map((area) => (
+                              <option key={area.id} value={area.id}>
+                                {area.name}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="date"
+                            className="rounded-xl border border-slate-200 px-2 py-1"
+                            value={taskEdit.dueDate}
+                            onChange={(e) =>
+                              setTaskEdit((prev) => ({ ...prev, dueDate: e.target.value }))
+                            }
+                          />
+                        </div>
+                        <div className="flex gap-2 text-xs">
+                          <button
+                            className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white"
+                            onClick={saveEdit}
+                          >
+                            Save
+                          </button>
+                          <button
+                            className="rounded-full px-3 py-1 text-slate-500"
+                            onClick={cancelEdit}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <p
+                          className={`font-medium ${
+                            isDone ? "text-emerald-800" : "text-slate-900"
+                          }`}
+                        >
+                          {task.title}
+                        </p>
+                        <div
+                          className={`mt-1 flex flex-wrap gap-2 text-xs ${
+                            isDone ? "text-emerald-700" : "text-slate-500"
+                          }`}
+                        >
+                          {task.priority && (
+                            <span className="rounded-full bg-slate-100 px-2 py-1 capitalize">
+                              {task.priority}
+                            </span>
+                          )}
+                          {task.lifeAreaId && (
+                            <span className="rounded-full bg-slate-100 px-2 py-1">
+                              {lifeAreaById[task.lifeAreaId]}
+                            </span>
+                          )}
+                          {task.dueDate && task.dueDate !== today && (
+                            <span className="rounded-full bg-slate-100 px-2 py-1">
+                              Due {formatDisplayDate(task.dueDate)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </label>
-                <button
-                  className={`text-xs font-medium ${
-                    isDone ? "text-emerald-700" : "text-slate-500 hover:text-slate-900"
-                  }`}
-                  onClick={() => moveToTomorrow(task)}
-                >
-                  Move to tomorrow ↗
-                </button>
+                </div>
+                <div className="flex flex-col gap-2 text-xs font-medium text-slate-500">
+                  {editingTaskId !== task.id && (
+                    <button
+                      className="rounded-full px-3 py-1 text-slate-500 hover:text-slate-900"
+                      onClick={() => startEdit(task)}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  <button
+                    className={`rounded-full px-3 py-1 ${
+                      isDone ? "text-emerald-700" : "hover:text-slate-900"
+                    }`}
+                    onClick={() => moveToTomorrow(task)}
+                  >
+                    Move to tomorrow ↗
+                  </button>
+                  <button
+                    className="rounded-full px-3 py-1 text-red-500 hover:text-red-600"
+                    onClick={() => deleteTask(task.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             );
           })}

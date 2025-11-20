@@ -43,6 +43,12 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [selectedDay, setSelectedDay] = useState(todayKey());
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [taskEdit, setTaskEdit] = useState({
+    title: "",
+    priority: "medium" as Task["priority"],
+    scheduledFor: "",
+  });
 
   const groupedTasks = useMemo(
     () =>
@@ -123,6 +129,42 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
     }));
     setNewTaskTitle("");
   };
+
+  const deleteTask = (taskId: string) => {
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.filter((task) => task.id !== taskId),
+    }));
+  };
+
+  const startEdit = (task: Task) => {
+    setEditingTaskId(task.id);
+    setTaskEdit({
+      title: task.title,
+      priority: task.priority,
+      scheduledFor: task.scheduledFor ?? selectedDay,
+    });
+  };
+
+  const saveEdit = () => {
+    if (!editingTaskId) return;
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((task) =>
+        task.id === editingTaskId
+          ? {
+              ...task,
+              title: taskEdit.title,
+              priority: taskEdit.priority,
+              scheduledFor: taskEdit.scheduledFor,
+            }
+          : task
+      ),
+    }));
+    setEditingTaskId(null);
+  };
+
+  const cancelEdit = () => setEditingTaskId(null);
 
   const handleDrop = (dateKey: string) => {
     if (!draggingTaskId) return;
@@ -214,27 +256,95 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
                     onDragStart={() => setDraggingTaskId(task.id)}
                     onDragEnd={() => setDraggingTaskId(null)}
                   >
-                    <label className="flex flex-1 items-center gap-3 text-sm">
+                    <div className="flex flex-1 items-center gap-3 text-sm">
                       <input
                         type="checkbox"
                         checked={task.status === "done"}
                         onChange={() => toggleTask(task)}
                       />
-                      <span className="font-medium text-slate-900">
-                        {task.title}
-                      </span>
-                    </label>
-                    <select
-                      value={task.scheduledFor}
-                      onChange={(e) => changeTaskDay(task, e.target.value)}
-                      className="rounded-2xl border border-slate-200 px-3 py-2 text-sm"
-                    >
-                      {weekDates.map((option) => (
-                        <option key={option} value={option}>
-                          {formatDateWithWeekday(option)}
-                        </option>
-                      ))}
-                    </select>
+                      {editingTaskId === task.id ? (
+                        <div className="flex-1 space-y-2 rounded-2xl border border-slate-200 p-3">
+                          <input
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            value={taskEdit.title}
+                            onChange={(e) =>
+                              setTaskEdit((prev) => ({ ...prev, title: e.target.value }))
+                            }
+                          />
+                          <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+                            <select
+                              className="rounded-xl border border-slate-200 px-2 py-1"
+                              value={taskEdit.priority}
+                              onChange={(e) =>
+                                setTaskEdit((prev) => ({
+                                  ...prev,
+                                  priority: e.target.value as Task["priority"],
+                                }))
+                              }
+                            >
+                              <option value="low">Low</option>
+                              <option value="medium">Medium</option>
+                              <option value="high">High</option>
+                            </select>
+                            <select
+                              className="rounded-xl border border-slate-200 px-2 py-1"
+                              value={taskEdit.scheduledFor}
+                              onChange={(e) =>
+                                setTaskEdit((prev) => ({ ...prev, scheduledFor: e.target.value }))
+                              }
+                            >
+                              {weekDates.map((option) => (
+                                <option key={option} value={option}>
+                                  {formatDateWithWeekday(option)}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex gap-2 text-xs">
+                            <button
+                              className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white"
+                              onClick={saveEdit}
+                            >
+                              Save
+                            </button>
+                            <button
+                              className="rounded-full px-3 py-1 text-slate-500"
+                              onClick={cancelEdit}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <span
+                          className={`font-medium ${
+                            task.status === "done" ? "text-emerald-700" : "text-slate-900"
+                          }`}
+                          onClick={() => startEdit(task)}
+                        >
+                          {task.title}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <select
+                        value={task.scheduledFor}
+                        onChange={(e) => changeTaskDay(task, e.target.value)}
+                        className="rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                      >
+                        {weekDates.map((option) => (
+                          <option key={option} value={option}>
+                            {formatDateWithWeekday(option)}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        className="rounded-full px-3 py-1 text-xs text-red-500 hover:text-red-600"
+                        onClick={() => deleteTask(task.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {(groupedTasks[dateKey] ?? []).length === 0 && (

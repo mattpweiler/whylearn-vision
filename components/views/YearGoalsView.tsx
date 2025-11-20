@@ -28,6 +28,15 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
   }, [state.lifeAreas]);
 
   const [form, setForm] = useState(defaultGoal());
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [goalEdit, setGoalEdit] = useState({
+    title: "",
+    description: "",
+    lifeAreaId: "",
+    priority: "medium" as PriorityLevel,
+    targetDate: "",
+    isStarred: false,
+  });
 
   const bigThree = state.goals
     .filter((goal) => goal.status === "active" && goal.isStarred)
@@ -62,6 +71,51 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
     updateState((prev) => ({ ...prev, goals: [goal, ...prev.goals] }));
     setForm(defaultGoal());
   };
+
+  const deleteGoal = (goalId: string) => {
+    updateState((prev) => ({
+      ...prev,
+      goals: prev.goals.filter((goal) => goal.id !== goalId),
+      tasks: prev.tasks.map((task) =>
+        task.goalId === goalId ? { ...task, goalId: undefined } : task
+      ),
+    }));
+  };
+
+  const startEdit = (goal: Goal) => {
+    setEditingGoalId(goal.id);
+    setGoalEdit({
+      title: goal.title,
+      description: goal.description ?? "",
+      lifeAreaId: goal.lifeAreaId ? goal.lifeAreaId.toString() : "",
+      priority: goal.priority,
+      targetDate: goal.targetDate ?? "",
+      isStarred: goal.isStarred,
+    });
+  };
+
+  const saveGoalEdit = () => {
+    if (!editingGoalId) return;
+    updateState((prev) => ({
+      ...prev,
+      goals: prev.goals.map((goal) =>
+        goal.id === editingGoalId
+          ? {
+              ...goal,
+              title: goalEdit.title,
+              description: goalEdit.description || undefined,
+              lifeAreaId: goalEdit.lifeAreaId ? Number(goalEdit.lifeAreaId) : undefined,
+              priority: goalEdit.priority,
+              targetDate: goalEdit.targetDate || undefined,
+              isStarred: goalEdit.isStarred,
+            }
+          : goal
+      ),
+    }));
+    setEditingGoalId(null);
+  };
+
+  const cancelGoalEdit = () => setEditingGoalId(null);
 
   return (
     <div className="space-y-6">
@@ -110,16 +164,116 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                 </span>
               </summary>
               <div className="mt-3 space-y-2 text-sm text-slate-600">
-                {goal.description && <p>{goal.description}</p>}
-                <p className="text-xs text-slate-500">
-                  Life area: {goal.lifeAreaId ? lifeAreaMap[goal.lifeAreaId] : "Any"}
-                </p>
-                <p className="text-xs text-slate-500">
-                  Target date: {formatDisplayDate(goal.targetDate)}
-                </p>
-                <p className="text-xs text-slate-500">
-                  Linked tasks: {taskCounts[goal.id] ?? 0}
-                </p>
+                {editingGoalId === goal.id ? (
+                  <div className="space-y-3 rounded-2xl border border-slate-200 p-3">
+                    <input
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                      value={goalEdit.title}
+                      onChange={(e) =>
+                        setGoalEdit((prev) => ({ ...prev, title: e.target.value }))
+                      }
+                    />
+                    <textarea
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                      rows={2}
+                      value={goalEdit.description}
+                      onChange={(e) =>
+                        setGoalEdit((prev) => ({ ...prev, description: e.target.value }))
+                      }
+                    />
+                    <div className="grid gap-3 md:grid-cols-2 text-xs text-slate-500">
+                      <select
+                        className="rounded-xl border border-slate-200 px-2 py-1"
+                        value={goalEdit.lifeAreaId}
+                        onChange={(e) =>
+                          setGoalEdit((prev) => ({ ...prev, lifeAreaId: e.target.value }))
+                        }
+                      >
+                        <option value="">Any area</option>
+                        {state.lifeAreas.map((area) => (
+                          <option key={area.id} value={area.id}>
+                            {area.name}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className="rounded-xl border border-slate-200 px-2 py-1"
+                        value={goalEdit.priority}
+                        onChange={(e) =>
+                          setGoalEdit((prev) => ({
+                            ...prev,
+                            priority: e.target.value as PriorityLevel,
+                          }))
+                        }
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                      </select>
+                      <input
+                        type="date"
+                        className="rounded-xl border border-slate-200 px-2 py-1"
+                        value={goalEdit.targetDate}
+                        onChange={(e) =>
+                          setGoalEdit((prev) => ({ ...prev, targetDate: e.target.value }))
+                        }
+                      />
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={goalEdit.isStarred}
+                          onChange={(e) =>
+                            setGoalEdit((prev) => ({ ...prev, isStarred: e.target.checked }))
+                          }
+                        />
+                        Star goal
+                      </label>
+                    </div>
+                    <div className="flex gap-2 text-xs">
+                      <button
+                        className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white"
+                        onClick={saveGoalEdit}
+                      >
+                        Save
+                      </button>
+                      <button
+                        className="rounded-full px-3 py-1 text-slate-500"
+                        onClick={cancelGoalEdit}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {goal.description && <p>{goal.description}</p>}
+                    <p className="text-xs text-slate-500">
+                      Life area: {goal.lifeAreaId ? lifeAreaMap[goal.lifeAreaId] : "Any"}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Target date: {formatDisplayDate(goal.targetDate)}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Linked tasks: {taskCounts[goal.id] ?? 0}
+                    </p>
+                  </>
+                )}
+                <div className="flex gap-3 text-xs">
+                  {editingGoalId !== goal.id && (
+                    <button
+                      className="font-semibold text-slate-600 hover:text-slate-900"
+                      onClick={() => startEdit(goal)}
+                    >
+                      Edit goal
+                    </button>
+                  )}
+                  <button
+                    className="font-semibold text-red-500 hover:text-red-600"
+                    onClick={() => deleteGoal(goal.id)}
+                  >
+                    Delete goal
+                  </button>
+                </div>
               </div>
             </details>
           ))}

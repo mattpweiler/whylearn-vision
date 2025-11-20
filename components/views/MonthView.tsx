@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AppState } from "@/lib/types";
+import { AppState, Task } from "@/lib/types";
 import {
   formatDisplayDate,
   generateId,
@@ -23,6 +23,12 @@ export const MonthView = ({ state, updateState }: ViewProps) => {
     monthlyReflection?.content?.focus ?? ""
   );
   const [newMilestone, setNewMilestone] = useState("");
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [taskEdit, setTaskEdit] = useState({
+    title: "",
+    scheduledFor: "",
+    dueDate: "",
+  });
 
   const milestones: string[] = monthlyReflection?.content?.milestones ?? [];
 
@@ -84,6 +90,42 @@ export const MonthView = ({ state, updateState }: ViewProps) => {
       };
     });
   };
+
+  const deleteTask = (taskId: string) => {
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.filter((task) => task.id !== taskId),
+    }));
+  };
+
+  const startEdit = (task: Task) => {
+    setEditingTaskId(task.id);
+    setTaskEdit({
+      title: task.title,
+      scheduledFor: task.scheduledFor ?? "",
+      dueDate: task.dueDate ?? "",
+    });
+  };
+
+  const saveTaskEdit = () => {
+    if (!editingTaskId) return;
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((task) =>
+        task.id === editingTaskId
+          ? {
+              ...task,
+              title: taskEdit.title,
+              scheduledFor: taskEdit.scheduledFor || undefined,
+              dueDate: taskEdit.dueDate || undefined,
+            }
+          : task
+      ),
+    }));
+    setEditingTaskId(null);
+  };
+
+  const cancelTaskEdit = () => setEditingTaskId(null);
 
   return (
     <div className="space-y-6">
@@ -177,12 +219,71 @@ export const MonthView = ({ state, updateState }: ViewProps) => {
                 key={task.id}
                 className="flex items-center justify-between rounded-2xl border border-slate-100 p-3 text-sm"
               >
-                <p className="font-medium text-slate-900">{task.title}</p>
-                <p className="text-xs text-slate-500">
-                  {task.scheduledFor
-                    ? `Scheduled ${formatDisplayDate(task.scheduledFor)}`
-                    : `Due ${formatDisplayDate(task.dueDate)}`}
-                </p>
+                <div className="flex-1">
+                  {editingTaskId === task.id ? (
+                    <div className="space-y-2 rounded-2xl border border-slate-200 p-3">
+                      <input
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                        value={taskEdit.title}
+                        onChange={(e) =>
+                          setTaskEdit((prev) => ({ ...prev, title: e.target.value }))
+                        }
+                      />
+                      <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+                        <input
+                          type="date"
+                          className="rounded-xl border border-slate-200 px-2 py-1"
+                          value={taskEdit.scheduledFor}
+                          onChange={(e) =>
+                            setTaskEdit((prev) => ({ ...prev, scheduledFor: e.target.value }))
+                          }
+                        />
+                        <input
+                          type="date"
+                          className="rounded-xl border border-slate-200 px-2 py-1"
+                          value={taskEdit.dueDate}
+                          onChange={(e) =>
+                            setTaskEdit((prev) => ({ ...prev, dueDate: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="flex gap-2 text-xs">
+                        <button
+                          className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white"
+                          onClick={saveTaskEdit}
+                        >
+                          Save
+                        </button>
+                        <button
+                          className="rounded-full px-3 py-1 text-slate-500"
+                          onClick={cancelTaskEdit}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      className="text-left font-medium text-slate-900"
+                      onClick={() => startEdit(task)}
+                    >
+                      {task.title}
+                    </button>
+                  )}
+                  {editingTaskId !== task.id && (
+                    <p className="text-xs text-slate-500">
+                      {task.scheduledFor
+                        ? `Scheduled ${formatDisplayDate(task.scheduledFor)}`
+                        : `Due ${formatDisplayDate(task.dueDate)}`}
+                    </p>
+                  )}
+                </div>
+                <button
+                  className="rounded-full px-3 py-1 text-xs text-red-500 hover:text-red-600"
+                  onClick={() => deleteTask(task.id)}
+                >
+                  Delete
+                </button>
               </div>
             ))}
             {monthTasks.length === 0 && (
