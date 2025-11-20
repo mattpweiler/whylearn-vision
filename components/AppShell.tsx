@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAppState } from "@/components/AppStateProvider";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { PageHeader } from "@/components/layout/Header";
@@ -60,6 +60,15 @@ export const AppShell = () => {
     state.settings.defaultHomeView ?? "today"
   );
 
+  const todayLabel = useMemo(() => {
+    const now = new Date();
+    return now.toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+  }, []);
+
   const activeMeta = meta[currentView];
 
   const viewComponent = (() => {
@@ -102,7 +111,7 @@ export const AppShell = () => {
           </select>
         </div>
         <PageHeader
-          title={activeMeta.title}
+          title={currentView === "today" ? todayLabel : activeMeta.title}
           subtitle={activeMeta.subtitle}
           profileName={state.profile.displayName}
         />

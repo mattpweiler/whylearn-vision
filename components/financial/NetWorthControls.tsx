@@ -1,21 +1,21 @@
 "use client";
 
 import { FinancialSettings } from "./types";
+import { parseAmountInput } from "./utils";
 
 interface NetWorthControlsProps {
   settings: FinancialSettings;
   onChange: (settings: FinancialSettings) => void;
+  netCashFlow: number;
 }
 
 export const NetWorthControls = ({
   settings,
   onChange,
+  netCashFlow,
 }: NetWorthControlsProps) => {
-  const handleNumberChange = (
-    key: keyof FinancialSettings,
-    value: string
-  ) => {
-    const numeric = Number(value);
+  const handleNumberChange = (key: keyof FinancialSettings, value: string) => {
+    const numeric = parseAmountInput(value);
     onChange({
       ...settings,
       [key]: Number.isFinite(numeric) ? numeric : 0,
@@ -35,9 +35,16 @@ export const NetWorthControls = ({
         <label className="text-sm font-medium text-slate-600">
           Current Net Worth
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-            value={settings.currentNetWorth}
+            value={
+              Number.isFinite(settings.currentNetWorth) &&
+              settings.currentNetWorth !== 0
+                ? settings.currentNetWorth.toString()
+                : ""
+            }
             onChange={(event) =>
               handleNumberChange("currentNetWorth", event.target.value)
             }
@@ -68,9 +75,50 @@ export const NetWorthControls = ({
             />
           </div>
         </label>
+
+        <label className="text-sm font-medium text-slate-600">
+          Annual Inflation Rate (%)
+          <div className="mt-1 flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2">
+            <input
+              type="range"
+              min={0}
+              max={10}
+              step={0.25}
+              className="flex-1 accent-emerald-500"
+              value={settings.inflationRate}
+              onChange={(event) =>
+                handleNumberChange("inflationRate", event.target.value)
+              }
+            />
+            <input
+              type="number"
+              className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-sm text-center outline-none focus:border-slate-400"
+              value={settings.inflationRate}
+              onChange={(event) =>
+                handleNumberChange("inflationRate", event.target.value)
+              }
+            />
+          </div>
+        </label>
       </div>
 
-      <div className="mt-4 grid gap-4 md:w-1/2">
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <label className="text-sm font-medium text-slate-600">
+          Monthly investment (Your Income - Expenses)
+          <input
+            readOnly
+            className="mt-1 w-full rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900"
+            value={
+              netCashFlow === 0
+                ? "—"
+                : Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                    maximumFractionDigits: 0,
+                  }).format(netCashFlow)
+            }
+          />
+        </label>
         <label className="text-sm font-medium text-slate-600">
           Projection Horizon
           <select
@@ -80,10 +128,14 @@ export const NetWorthControls = ({
               handleNumberChange("projectionYears", event.target.value)
             }
           >
-            <option value={1}>1 Year</option>
-            <option value={3}>3 Years</option>
-            <option value={5}>5 Years</option>
-            <option value={10}>10 Years</option>
+            {Array.from({ length: 50 }).map((_, idx) => {
+              const years = idx + 1;
+              return (
+                <option key={years} value={years}>
+                  {years} {years === 1 ? "Year" : "Years"}
+                </option>
+              );
+            })}
           </select>
         </label>
       </div>

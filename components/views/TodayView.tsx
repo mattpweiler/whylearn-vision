@@ -1,12 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { MouseEvent, useMemo, useState } from "react";
 import { AppState, Task } from "@/lib/types";
-import {
-  formatDisplayDate,
-  generateId,
-  todayKey,
-} from "@/lib/utils";
+import { generateId, todayKey } from "@/lib/utils";
 
 interface ViewProps {
   state: AppState;
@@ -15,14 +11,6 @@ interface ViewProps {
 
 export const TodayView = ({ state, updateState }: ViewProps) => {
   const today = todayKey();
-  const lifeAreaById = useMemo(() => {
-    const map: Record<number, string> = {};
-    state.lifeAreas.forEach((area) => {
-      map[area.id] = area.name;
-    });
-    return map;
-  }, [state.lifeAreas]);
-
   const todaysTasks = useMemo(
     () =>
       state.tasks
@@ -44,6 +32,10 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
     lifeAreaId: "",
     dueDate: "",
   });
+
+  const habitDraftInitial = { name: "", description: "", lifeAreaId: "" };
+  const [habitDraft, setHabitDraft] = useState(habitDraftInitial);
+  const [showHabitForm, setShowHabitForm] = useState(false);
 
   const saveFocus = () => {
     if (!focusDraft.trim()) return;
@@ -83,6 +75,23 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
           : t
       ),
     }));
+  };
+
+  const handleTaskCardClick = (
+    event: MouseEvent<HTMLDivElement>,
+    task: Task
+  ) => {
+    if (editingTaskId === task.id) return;
+    const target = event.target as HTMLElement;
+    if (
+      target.closest("button") ||
+      target.closest("input") ||
+      target.closest("select") ||
+      target.closest("textarea")
+    ) {
+      return;
+    }
+    toggleTask(task);
   };
 
   const moveToTomorrow = (task: Task) => {
@@ -222,10 +231,69 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
     });
   };
 
+  const addDailyHabit = () => {
+    if (!habitDraft.name.trim()) return;
+    const now = new Date().toISOString();
+    updateState((prev) => ({
+      ...prev,
+      habits: [
+        ...prev.habits,
+        {
+          id: generateId(),
+          name: habitDraft.name.trim(),
+          description: habitDraft.description?.trim() || undefined,
+          lifeAreaId: habitDraft.lifeAreaId
+            ? Number(habitDraft.lifeAreaId)
+            : undefined,
+          cadence: "daily",
+          frequencyPerPeriod: 1,
+          isActive: true,
+          createdAt: now,
+        },
+      ],
+    }));
+    setHabitDraft(habitDraftInitial);
+    setShowHabitForm(false);
+  };
+
+  const allTasksDone =
+    todaysTasks.length > 0 &&
+    todaysTasks.every((task) => task.status === "done");
+  const allHabitsDone =
+    todaysHabits.length > 0 &&
+    todaysHabits.every((habit) => hasLog(habit.id));
+  const shouldCelebrate = allTasksDone && allHabitsDone;
+  const [hasCelebratedToday, setHasCelebratedToday] = useState(false);
+
+  const showCelebrationModal = shouldCelebrate && !hasCelebratedToday;
+
+  const dismissCelebration = () => {
+    setHasCelebratedToday(true);
+  };
+
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+      {showCelebrationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4">
+          <div className="max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl">
+            <p className="text-2xl font-semibold text-slate-900">
+              Mission accomplished ✨
+            </p>
+            <p className="mt-3 text-sm text-slate-600">
+              You wrapped every task and habit today. Take a breath, start a
+              tiny plan for tomorrow, and enjoy some downtime.
+            </p>
+            <button
+              className="mt-5 w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white"
+              onClick={dismissCelebration}
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="grid gap-6">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm font-medium text-slate-500">Today’s focus</p>
           {focus && !editingFocus ? (
             <div className="mt-3 flex items-center justify-between">
@@ -257,15 +325,6 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
             </div>
           )}
         </div>
-        <div className="rounded-3xl border border-emerald-100 bg-emerald-50/80 p-6 shadow-sm">
-          <p className="text-sm font-semibold text-emerald-800">
-            Tiny momentum tip
-          </p>
-          <p className="mt-2 text-sm text-emerald-900">
-            Your day is defined by what you start before 10am. Ship one small
-            win now.
-          </p>
-        </div>
       </div>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -279,7 +338,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
             </p>
           </div>
         </div>
-        <div className="mt-6 space-y-3">
+        <div className="mt-6 space-y-2">
           {todaysTasks.length === 0 && (
             <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
               No tasks yet. Add one tiny thing you can do today to move life 1%
@@ -291,18 +350,19 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
             return (
               <div
                 key={task.id}
-                className={`flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-4 ${
+                className={`flex cursor-pointer flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition-colors ${
                   isDone
-                    ? "border-emerald-100 bg-emerald-50/70"
-                    : "border-slate-100"
+                    ? "border-emerald-100 bg-emerald-50/70 hover:border-emerald-200 hover:bg-emerald-50"
+                    : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                 }`}
                 draggable
                 onDragStart={() => setDraggingTaskId(task.id)}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => reorderTasks(index)}
                 onDragEnd={() => setDraggingTaskId(null)}
+                onClick={(event) => handleTaskCardClick(event, task)}
               >
-                <div className="flex flex-1 items-center gap-3 text-sm">
+                <div className="flex flex-1 items-center gap-2 text-sm">
                   <input
                     type="checkbox"
                     checked={isDone}
@@ -380,32 +440,11 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
                         >
                           {task.title}
                         </p>
-                        <div
-                          className={`mt-1 flex flex-wrap gap-2 text-xs ${
-                            isDone ? "text-emerald-700" : "text-slate-500"
-                          }`}
-                        >
-                          {task.priority && (
-                            <span className="rounded-full bg-slate-100 px-2 py-1 capitalize">
-                              {task.priority}
-                            </span>
-                          )}
-                          {task.lifeAreaId && (
-                            <span className="rounded-full bg-slate-100 px-2 py-1">
-                              {lifeAreaById[task.lifeAreaId]}
-                            </span>
-                          )}
-                          {task.dueDate && task.dueDate !== today && (
-                            <span className="rounded-full bg-slate-100 px-2 py-1">
-                              Due {formatDisplayDate(task.dueDate)}
-                            </span>
-                          )}
-                        </div>
                       </div>
                     )}
                   </div>
                 </div>
-                <div className="flex flex-col gap-2 text-xs font-medium text-slate-500">
+                <div className="flex gap-2 text-xs font-medium text-slate-500">
                   {editingTaskId !== task.id && (
                     <button
                       className="rounded-full px-3 py-1 text-slate-500 hover:text-slate-900"
@@ -465,22 +504,109 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
               No active daily habits yet.
             </p>
           )}
-          {todaysHabits.map((habit) => (
-            <label
-              key={habit.id}
-              className="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3"
-            >
-              <div>
-                <p className="font-medium text-slate-900">{habit.name}</p>
-                <p className="text-xs text-slate-500">{habit.description}</p>
+          {todaysHabits.map((habit) => {
+            const completed = hasLog(habit.id);
+            return (
+              <label
+                key={habit.id}
+                className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition-colors ${
+                  completed
+                    ? "border-emerald-100 bg-emerald-50/70 hover:border-emerald-200 hover:bg-emerald-50"
+                    : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 accent-emerald-500"
+                  checked={completed}
+                  onChange={() => toggleHabit(habit.id)}
+                />
+                <div className="text-left">
+                  <p
+                    className={`font-medium ${
+                      completed ? "text-emerald-800" : "text-slate-900"
+                    }`}
+                  >
+                    {habit.name}
+                  </p>
+                  <p className="text-xs text-slate-500">{habit.description}</p>
+                </div>
+              </label>
+            );
+          })}
+          {showHabitForm ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-700">
+                  Add a daily habit
+                </p>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-slate-500 hover:text-slate-900"
+                  onClick={() => {
+                    setShowHabitForm(false);
+                    setHabitDraft(habitDraftInitial);
+                  }}
+                >
+                  Cancel
+                </button>
               </div>
-              <input
-                type="checkbox"
-                checked={hasLog(habit.id)}
-                onChange={() => toggleHabit(habit.id)}
-              />
-            </label>
-          ))}
+              <div className="mt-3 space-y-3 text-sm">
+                <input
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  placeholder="Habit name"
+                  value={habitDraft.name}
+                  onChange={(e) =>
+                    setHabitDraft((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                />
+                <textarea
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  placeholder="Why it matters"
+                  rows={2}
+                  value={habitDraft.description}
+                  onChange={(e) =>
+                    setHabitDraft((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                />
+                <select
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                  value={habitDraft.lifeAreaId}
+                  onChange={(e) =>
+                    setHabitDraft((prev) => ({
+                      ...prev,
+                      lifeAreaId: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Any life area</option>
+                  {state.lifeAreas.map((area) => (
+                    <option key={area.id} value={area.id}>
+                      {area.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="w-full rounded-2xl bg-slate-900 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  onClick={addDailyHabit}
+                  disabled={!habitDraft.name.trim()}
+                >
+                  Save daily habit
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="flex w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+              onClick={() => setShowHabitForm(true)}
+            >
+              + Add a daily habit
+            </button>
+          )}
         </div>
       </section>
 

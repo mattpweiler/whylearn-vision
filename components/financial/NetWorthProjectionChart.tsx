@@ -17,6 +17,7 @@ interface NetWorthProjectionChartProps {
   netCashFlow: number;
   annualReturnRate: number;
   projectionYears: number;
+  inflationRate: number;
 }
 
 interface ProjectionPoint {
@@ -29,10 +30,15 @@ const buildProjectionData = (
   startingNetWorth: number,
   netCashFlow: number,
   annualReturnRate: number,
-  projectionYears: number
+  projectionYears: number,
+  inflationRate: number
 ) => {
   const totalMonths = Math.max(1, Math.round(projectionYears * 12));
-  const monthlyRate = annualReturnRate / 100 / 12;
+  const effectiveAnnual = Math.max(
+    -1,
+    (1 + annualReturnRate / 100) / (1 + inflationRate / 100) - 1
+  );
+  const monthlyRate = effectiveAnnual / 12;
   const points: ProjectionPoint[] = [];
   let current = startingNetWorth;
 
@@ -62,12 +68,14 @@ export const NetWorthProjectionChart = ({
   netCashFlow,
   annualReturnRate,
   projectionYears,
+  inflationRate,
 }: NetWorthProjectionChartProps) => {
   const data = buildProjectionData(
     currentNetWorth,
     netCashFlow,
     annualReturnRate,
-    projectionYears
+    projectionYears,
+    inflationRate
   );
 
   const lastPoint = data[data.length - 1];

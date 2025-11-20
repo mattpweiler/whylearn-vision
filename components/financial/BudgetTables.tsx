@@ -78,11 +78,15 @@ const BudgetTable = <T extends FinancialItem>({
                 }
               />
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 md:w-40"
                 placeholder="Amount"
                 value={
-                  Number.isFinite(item.amount) ? item.amount : ""
+                  Number.isFinite(item.amount) && item.amount !== 0
+                    ? item.amount.toString()
+                    : ""
                 }
                 onChange={(event) =>
                   handleItemChange(item.id, {

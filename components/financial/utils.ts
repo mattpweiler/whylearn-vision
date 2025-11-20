@@ -6,7 +6,9 @@ export const formatCurrency = (value: number) =>
   }).format(Number.isFinite(value) ? value : 0);
 
 export const parseAmountInput = (value: string) => {
-  const parsed = Number(value);
+  if (!value.trim()) return 0;
+  const sanitized = value.replace(/[^\d-]/g, "");
+  const parsed = Number(sanitized);
   return Number.isFinite(parsed) ? parsed : 0;
 };
 

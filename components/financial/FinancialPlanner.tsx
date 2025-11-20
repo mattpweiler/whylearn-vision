@@ -93,11 +93,16 @@ export const FinancialPlanner = ({ showIntro = true }: FinancialPlannerProps) =>
       </PageSection>
 
       <PageSection>
-        <NetWorthControls settings={settings} onChange={handleSettingsChange} />
+        <NetWorthControls
+          settings={settings}
+          onChange={handleSettingsChange}
+          netCashFlow={netCashFlow}
+        />
         <NetWorthProjectionChart
           currentNetWorth={settings.currentNetWorth}
           annualReturnRate={settings.annualReturnRate}
           projectionYears={settings.projectionYears}
+          inflationRate={settings.inflationRate}
           netCashFlow={netCashFlow}
         />
       </PageSection>

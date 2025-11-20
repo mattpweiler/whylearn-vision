@@ -7,8 +7,8 @@ const navItems: { key: ViewKey; label: string; icon: string }[] = [
   { key: "week", label: "This Week", icon: "📅" },
   { key: "month", label: "This Month", icon: "🗓️" },
   { key: "year", label: "Year Goals", icon: "🏔️" },
-  { key: "direction", label: "Direction", icon: "🧭" },
-  { key: "financial", label: "Financial", icon: "💸" },
+  { key: "direction", label: "Find Direction", icon: "🧭" },
+  { key: "financial", label: "My Financials", icon: "💸" },
   { key: "settings", label: "Settings", icon: "⚙️" },
 ];
 
@@ -31,12 +31,13 @@ export const Sidebar = ({
           return (
             <button
               key={item.key}
-              className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition ${
+              className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition-colors duration-200 ${
                 active
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-slate-900 text-white hover:bg-slate-900/80"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
               onClick={() => onSelect(item.key)}
+              type="button"
             >
               <span className="text-lg">{item.icon}</span>
               <span>{item.label}</span>

@@ -14,6 +14,7 @@ export interface FinancialSettings {
   currentNetWorth: number;
   annualReturnRate: number; // percent
   projectionYears: number;
+  inflationRate: number;
 }
 
 export type FinancialItem = IncomeItem | ExpenseItem;
@@ -26,4 +27,5 @@ export const DEFAULT_FINANCIAL_SETTINGS: FinancialSettings = {
   currentNetWorth: 0,
   annualReturnRate: 5,
   projectionYears: 5,
+  inflationRate: 2,
 };
