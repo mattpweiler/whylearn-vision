@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { AppState, HabitCadence, ViewKey } from "@/lib/types";
 import { generateId } from "@/lib/utils";
 
+type TrackedCadence = Extract<HabitCadence, "daily" | "weekly" | "monthly">;
+
 interface ViewProps {
   state: AppState;
   updateState: (updater: (prev: AppState) => AppState) => void;
@@ -29,11 +31,12 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
   const [habitDraft, setHabitDraft] = useState(habitDraftInitial);
 
   const habitsByCadence = useMemo(
-    () => ({
-      daily: state.habits.filter((habit) => habit.cadence === "daily"),
-      weekly: state.habits.filter((habit) => habit.cadence === "weekly"),
-      monthly: state.habits.filter((habit) => habit.cadence === "monthly"),
-    }),
+    () =>
+      ({
+        daily: state.habits.filter((habit) => habit.cadence === "daily"),
+        weekly: state.habits.filter((habit) => habit.cadence === "weekly"),
+        monthly: state.habits.filter((habit) => habit.cadence === "monthly"),
+      }) satisfies Record<TrackedCadence, typeof state.habits>,
     [state.habits]
   );
 
@@ -98,7 +101,7 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
     setHabitDraft(habitDraftInitial);
   };
 
-  const cadenceSections: Array<{ key: HabitCadence; label: string }> = [
+  const cadenceSections: Array<{ key: TrackedCadence; label: string }> = [
     { key: "daily", label: "Daily habits" },
     { key: "weekly", label: "Weekly habits" },
     { key: "monthly", label: "Monthly habits" },
