@@ -326,7 +326,7 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
                         </span>
                       )}
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
                       <select
                         value={task.scheduledFor}
                         onChange={(e) => changeTaskDay(task, e.target.value)}
@@ -378,7 +378,7 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
             onKeyDown={(e) => e.key === "Enter" && addWeeklyTask()}
           />
           <button
-            className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
+            className="cursor-pointer rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
             onClick={addWeeklyTask}
           >
             Add

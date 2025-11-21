@@ -18,6 +18,11 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
         .sort((a, b) => a.orderIndex - b.orderIndex),
     [state.tasks, today]
   );
+  const orderedTodaysTasks = useMemo(() => {
+    const pending = todaysTasks.filter((task) => task.status !== "done");
+    const done = todaysTasks.filter((task) => task.status === "done");
+    return [...pending, ...done];
+  }, [todaysTasks]);
 
   const focus = state.dailyFocus[today] ?? "";
   const [focusDraft, setFocusDraft] = useState(focus);
@@ -28,13 +33,11 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskEdit, setTaskEdit] = useState({
     title: "",
-    priority: "medium" as Task["priority"],
-    lifeAreaId: "",
-    dueDate: "",
   });
 
   const habitDraftInitial = { name: "", description: "", lifeAreaId: "" };
   const [habitDraft, setHabitDraft] = useState(habitDraftInitial);
+  const [editingHabitId, setEditingHabitId] = useState<string | null>(null);
   const [showHabitForm, setShowHabitForm] = useState(false);
 
   const saveFocus = () => {
@@ -174,9 +177,6 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
     setEditingTaskId(task.id);
     setTaskEdit({
       title: task.title,
-      priority: task.priority,
-      lifeAreaId: task.lifeAreaId ? task.lifeAreaId.toString() : "",
-      dueDate: task.dueDate ?? "",
     });
   };
 
@@ -189,9 +189,9 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
           ? {
               ...task,
               title: taskEdit.title,
-              priority: taskEdit.priority,
-              lifeAreaId: taskEdit.lifeAreaId ? Number(taskEdit.lifeAreaId) : undefined,
-              dueDate: taskEdit.dueDate || undefined,
+              priority: task.priority,
+              lifeAreaId: task.lifeAreaId,
+              dueDate: task.dueDate,
             }
           : task
       ),
@@ -231,27 +231,57 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
     });
   };
 
-  const addDailyHabit = () => {
-    if (!habitDraft.name.trim()) return;
-    const now = new Date().toISOString();
+  const updateDailyHabit = (
+    habitId: string,
+    changes: Partial<{ name: string; description?: string; lifeAreaId?: number }>
+  ) => {
     updateState((prev) => ({
       ...prev,
-      habits: [
-        ...prev.habits,
-        {
-          id: generateId(),
-          name: habitDraft.name.trim(),
-          description: habitDraft.description?.trim() || undefined,
-          lifeAreaId: habitDraft.lifeAreaId
-            ? Number(habitDraft.lifeAreaId)
-            : undefined,
-          cadence: "daily",
-          frequencyPerPeriod: 1,
-          isActive: true,
-          createdAt: now,
-        },
-      ],
+      habits: prev.habits.map((habit) =>
+        habit.id === habitId ? { ...habit, ...changes } : habit
+      ),
     }));
+  };
+
+  const removeDailyHabit = (habitId: string) => {
+    updateState((prev) => ({
+      ...prev,
+      habits: prev.habits.filter((habit) => habit.id !== habitId),
+      habitLogs: prev.habitLogs.filter((log) => log.habitId !== habitId),
+    }));
+  };
+
+  const addDailyHabit = () => {
+    if (!habitDraft.name.trim()) return;
+    const payload = {
+      name: habitDraft.name.trim(),
+      description: habitDraft.description?.trim() || undefined,
+      lifeAreaId: habitDraft.lifeAreaId
+        ? Number(habitDraft.lifeAreaId)
+        : undefined,
+    };
+
+    if (editingHabitId) {
+      updateDailyHabit(editingHabitId, payload);
+      setEditingHabitId(null);
+    } else {
+      const now = new Date().toISOString();
+      updateState((prev) => ({
+        ...prev,
+        habits: [
+          ...prev.habits,
+          {
+            id: generateId(),
+            ...payload,
+            cadence: "daily",
+            frequencyPerPeriod: 1,
+            isActive: true,
+            createdAt: now,
+          },
+        ],
+      }));
+    }
+
     setHabitDraft(habitDraftInitial);
     setShowHabitForm(false);
   };
@@ -299,7 +329,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
             <div className="mt-3 flex items-center justify-between">
               <p className="text-lg font-semibold text-slate-900">{focus}</p>
               <button
-                className="text-sm text-slate-500 hover:text-slate-900"
+                className="cursor-pointer rounded-full px-3 py-1 text-sm text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
                 onClick={() => {
                   setFocusDraft(focus);
                   setEditingFocus(true);
@@ -317,7 +347,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
                 className="w-full rounded-2xl border border-slate-200 px-4 py-3"
               />
               <button
-                className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
+                className="cursor-pointer rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
                 onClick={saveFocus}
               >
                 Save today’s focus
@@ -345,7 +375,11 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
               forward.
             </div>
           )}
-          {todaysTasks.map((task, index) => {
+          {orderedTodaysTasks.map((task) => {
+            const index = Math.max(
+              0,
+              todaysTasks.findIndex((t) => t.id === task.id)
+            );
             const isDone = task.status === "done";
             return (
               <div
@@ -378,53 +412,15 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
                             setTaskEdit((prev) => ({ ...prev, title: e.target.value }))
                           }
                         />
-                        <div className="flex flex-wrap gap-3 text-xs text-slate-500">
-                          <select
-                            className="rounded-xl border border-slate-200 px-2 py-1 capitalize"
-                            value={taskEdit.priority}
-                            onChange={(e) =>
-                              setTaskEdit((prev) => ({
-                                ...prev,
-                                priority: e.target.value as Task["priority"],
-                              }))
-                            }
-                          >
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                          </select>
-                          <select
-                            className="rounded-xl border border-slate-200 px-2 py-1"
-                            value={taskEdit.lifeAreaId}
-                            onChange={(e) =>
-                              setTaskEdit((prev) => ({ ...prev, lifeAreaId: e.target.value }))
-                            }
-                          >
-                            <option value="">Any area</option>
-                            {state.lifeAreas.map((area) => (
-                              <option key={area.id} value={area.id}>
-                                {area.name}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            type="date"
-                            className="rounded-xl border border-slate-200 px-2 py-1"
-                            value={taskEdit.dueDate}
-                            onChange={(e) =>
-                              setTaskEdit((prev) => ({ ...prev, dueDate: e.target.value }))
-                            }
-                          />
-                        </div>
                         <div className="flex gap-2 text-xs">
                           <button
-                            className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white"
+                            className="cursor-pointer rounded-full bg-slate-900 px-3 py-1 font-semibold text-white transition-colors hover:bg-slate-800"
                             onClick={saveEdit}
                           >
                             Save
                           </button>
                           <button
-                            className="rounded-full px-3 py-1 text-slate-500"
+                            className="cursor-pointer rounded-full px-3 py-1 text-slate-500 transition-colors hover:bg-slate-100"
                             onClick={cancelEdit}
                           >
                             Cancel
@@ -447,22 +443,24 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
                 <div className="flex gap-2 text-xs font-medium text-slate-500">
                   {editingTaskId !== task.id && (
                     <button
-                      className="rounded-full px-3 py-1 text-slate-500 hover:text-slate-900"
+                      className="cursor-pointer rounded-full px-3 py-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
                       onClick={() => startEdit(task)}
                     >
                       Edit
                     </button>
                   )}
                   <button
-                    className={`rounded-full px-3 py-1 ${
-                      isDone ? "text-emerald-700" : "hover:text-slate-900"
+                    className={`cursor-pointer rounded-full px-3 py-1 ${
+                      isDone
+                        ? "text-emerald-700 hover:bg-emerald-100"
+                        : "transition-colors hover:bg-slate-100 hover:text-slate-900"
                     }`}
                     onClick={() => moveToTomorrow(task)}
                   >
                     Move to tomorrow ↗
                   </button>
                   <button
-                    className="rounded-full px-3 py-1 text-red-500 hover:text-red-600"
+                    className="cursor-pointer rounded-full px-3 py-1 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600"
                     onClick={() => deleteTask(task.id)}
                   >
                     Delete
@@ -481,7 +479,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
             onKeyDown={(e) => e.key === "Enter" && addQuickTask()}
           />
           <button
-            className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
+            className="cursor-pointer rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
             onClick={addQuickTask}
           >
             Add
@@ -507,31 +505,63 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
           {todaysHabits.map((habit) => {
             const completed = hasLog(habit.id);
             return (
-              <label
+              <div
                 key={habit.id}
-                className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition-colors ${
+                className={`relative flex items-center gap-3 rounded-2xl border px-4 py-3 transition-colors ${
                   completed
                     ? "border-emerald-100 bg-emerald-50/70 hover:border-emerald-200 hover:bg-emerald-50"
                     : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                 }`}
               >
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 accent-emerald-500"
-                  checked={completed}
-                  onChange={() => toggleHabit(habit.id)}
-                />
-                <div className="text-left">
-                  <p
-                    className={`font-medium ${
-                      completed ? "text-emerald-800" : "text-slate-900"
-                    }`}
-                  >
-                    {habit.name}
-                  </p>
-                  <p className="text-xs text-slate-500">{habit.description}</p>
+                <label className="flex flex-1 cursor-pointer items-center gap-3" htmlFor={habit.id}>
+                  <input
+                    id={habit.id}
+                    type="checkbox"
+                    className="h-5 w-5 accent-emerald-500"
+                    checked={completed}
+                    onChange={() => toggleHabit(habit.id)}
+                  />
+                  <div className="text-left">
+                    <p
+                      className={`font-medium ${
+                        completed ? "text-emerald-800" : "text-slate-900"
+                      }`}
+                    >
+                      {habit.name}
+                    </p>
+                    <p className="text-xs text-slate-500">{habit.description}</p>
+                  </div>
+                </label>
+                <div className="relative">
+                  <details className="group">
+                    <summary className="flex cursor-pointer items-center rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100">
+                      <span className="text-xl">⋯</span>
+                    </summary>
+                    <div className="absolute right-0 top-10 z-10 w-32 rounded-2xl border border-slate-100 bg-white p-2 text-sm shadow-lg">
+                      <button
+                        className="w-full cursor-pointer rounded-lg px-2 py-1 text-left text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                        onClick={() => {
+                          setShowHabitForm(true);
+                          setHabitDraft({
+                            name: habit.name,
+                            description: habit.description ?? "",
+                            lifeAreaId: habit.lifeAreaId?.toString() ?? "",
+                          });
+                          setEditingHabitId(habit.id);
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="w-full cursor-pointer rounded-lg px-2 py-1 text-left text-red-500 transition hover:bg-red-50"
+                        onClick={() => removeDailyHabit(habit.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </details>
                 </div>
-              </label>
+              </div>
             );
           })}
           {showHabitForm ? (
@@ -546,6 +576,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
                   onClick={() => {
                     setShowHabitForm(false);
                     setHabitDraft(habitDraftInitial);
+                    setEditingHabitId(null);
                   }}
                 >
                   Cancel
@@ -560,37 +591,8 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
                     setHabitDraft((prev) => ({ ...prev, name: e.target.value }))
                   }
                 />
-                <textarea
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2"
-                  placeholder="Why it matters"
-                  rows={2}
-                  value={habitDraft.description}
-                  onChange={(e) =>
-                    setHabitDraft((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
-                />
-                <select
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2"
-                  value={habitDraft.lifeAreaId}
-                  onChange={(e) =>
-                    setHabitDraft((prev) => ({
-                      ...prev,
-                      lifeAreaId: e.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Any life area</option>
-                  {state.lifeAreas.map((area) => (
-                    <option key={area.id} value={area.id}>
-                      {area.name}
-                    </option>
-                  ))}
-                </select>
                 <button
-                  className="w-full rounded-2xl bg-slate-900 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  className="w-full cursor-pointer rounded-2xl bg-slate-900 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
                   onClick={addDailyHabit}
                   disabled={!habitDraft.name.trim()}
                 >
@@ -601,7 +603,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
           ) : (
             <button
               type="button"
-              className="flex w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+              className="flex w-full cursor-pointer items-center justify-center rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50"
               onClick={() => setShowHabitForm(true)}
             >
               + Add a daily habit

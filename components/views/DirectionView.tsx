@@ -30,17 +30,11 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
     });
     return defaults;
   });
-  const dailyHabits = state.habits.filter((habit) => habit.cadence === "daily");
   const [reflectionType, setReflectionType] = useState("weekly");
   const [reflectionContent, setReflectionContent] = useState("");
   const [mood, setMood] = useState(5);
   const [energy, setEnergy] = useState(5);
   const [aiMessage, setAiMessage] = useState("");
-  const [habitDraft, setHabitDraft] = useState({
-    name: "",
-    description: "",
-    lifeAreaId: "",
-  });
 
   const updateScore = (areaId: number) => {
     updateState((prev) => ({
@@ -86,54 +80,6 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
   const session = state.aiSessions[0];
   const messages: AiMessage[] = session?.messages ?? [];
 
-  const updateHabit = (
-    habitId: string,
-    changes: Partial<{
-      name: string;
-      description?: string;
-      lifeAreaId?: number;
-      isActive: boolean;
-    }>
-  ) => {
-    updateState((prev) => ({
-      ...prev,
-      habits: prev.habits.map((habit) =>
-        habit.id === habitId ? { ...habit, ...changes } : habit
-      ),
-    }));
-  };
-
-  const removeHabit = (habitId: string) => {
-    updateState((prev) => ({
-      ...prev,
-      habits: prev.habits.filter((habit) => habit.id !== habitId),
-      habitLogs: prev.habitLogs.filter((log) => log.habitId !== habitId),
-    }));
-  };
-
-  const addDailyHabit = () => {
-    if (!habitDraft.name.trim()) return;
-    const now = new Date().toISOString();
-    updateState((prev) => ({
-      ...prev,
-      habits: [
-        ...prev.habits,
-        {
-          id: generateId(),
-          name: habitDraft.name.trim(),
-          description: habitDraft.description?.trim() || undefined,
-          lifeAreaId: habitDraft.lifeAreaId
-            ? Number(habitDraft.lifeAreaId)
-            : undefined,
-          cadence: "daily" as const,
-          frequencyPerPeriod: 1,
-          isActive: true,
-          createdAt: now,
-        },
-      ],
-    }));
-    setHabitDraft({ name: "", description: "", lifeAreaId: "" });
-  };
 
   const fakeResponse = (input: string) =>
     `Thanks for sharing. Choose one tiny action linked to that: “${input.slice(
@@ -222,115 +168,7 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-lg font-semibold text-slate-900">Daily habits</p>
-            <p className="text-sm text-slate-500">
-              Tweak the reps you track on Today view.
-            </p>
-          </div>
-        </div>
-        <div className="mt-4 space-y-3">
-          {dailyHabits.map((habit) => (
-            <div
-              key={habit.id}
-              className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-3"
-            >
-              <input
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                value={habit.name}
-                onChange={(e) => updateHabit(habit.id, { name: e.target.value })}
-              />
-              <textarea
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                rows={2}
-                value={habit.description ?? ""}
-                onChange={(e) =>
-                  updateHabit(habit.id, { description: e.target.value })
-                }
-              />
-              <div className="flex flex-wrap gap-3">
-                <select
-                  className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  value={habit.lifeAreaId ? habit.lifeAreaId.toString() : ""}
-                  onChange={(e) =>
-                    updateHabit(habit.id, {
-                      lifeAreaId: e.target.value
-                        ? Number(e.target.value)
-                        : undefined,
-                    })
-                  }
-                >
-                  <option value="">Any area</option>
-                  {state.lifeAreas.map((area) => (
-                    <option key={area.id} value={area.id}>
-                      {area.name}
-                    </option>
-                  ))}
-                </select>
-                <label className="flex items-center gap-2 text-sm text-slate-600">
-                  <input
-                    type="checkbox"
-                    checked={habit.isActive}
-                    onChange={(e) => updateHabit(habit.id, { isActive: e.target.checked })}
-                  />
-                  Active
-                </label>
-                <button
-                  className="text-sm text-slate-500 hover:text-red-500"
-                  onClick={() => removeHabit(habit.id)}
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))}
-          {dailyHabits.length === 0 && (
-            <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-              No daily habits yet. Add one below to start tracking.
-            </p>
-          )}
-        </div>
-        <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-4 space-y-3">
-          <p className="text-sm font-semibold text-slate-700">Add new habit</p>
-          <input
-            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-            placeholder="Habit name"
-            value={habitDraft.name}
-            onChange={(e) => setHabitDraft((prev) => ({ ...prev, name: e.target.value }))}
-          />
-          <textarea
-            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-            rows={2}
-            placeholder="Description (optional)"
-            value={habitDraft.description}
-            onChange={(e) =>
-              setHabitDraft((prev) => ({ ...prev, description: e.target.value }))
-            }
-          />
-          <select
-            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-            value={habitDraft.lifeAreaId}
-            onChange={(e) =>
-              setHabitDraft((prev) => ({ ...prev, lifeAreaId: e.target.value }))
-            }
-          >
-            <option value="">Any area</option>
-            {state.lifeAreas.map((area) => (
-              <option key={area.id} value={area.id}>
-                {area.name}
-              </option>
-            ))}
-          </select>
-          <button
-            className="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
-            onClick={addDailyHabit}
-          >
-            + Add daily habit
-          </button>
-        </div>
-      </section>
+      
 
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

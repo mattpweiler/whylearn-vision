@@ -38,9 +38,7 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
     isStarred: false,
   });
 
-  const bigThree = state.goals
-    .filter((goal) => goal.status === "active" && goal.isStarred)
-    .slice(0, 3);
+  const activeGoals = state.goals.filter((goal) => goal.status === "active");
 
   const taskCounts = useMemo(() => {
     const map: Record<string, number> = {};
@@ -121,38 +119,8 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
     <div className="space-y-6">
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-lg font-semibold text-slate-900">Big yearly goals</p>
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
-          {bigThree.map((goal) => (
-            <div
-              key={goal.id}
-              className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
-            >
-              <p className="text-xs uppercase tracking-wide text-amber-600">
-                Starred
-              </p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">
-                {goal.title}
-              </p>
-              <p className="text-sm text-slate-600">
-                {goal.lifeAreaId ? lifeAreaMap[goal.lifeAreaId] : "Any"}
-              </p>
-              <p className="text-xs text-slate-500">
-                Target {formatDisplayDate(goal.targetDate)}
-              </p>
-            </div>
-          ))}
-          {bigThree.length === 0 && (
-            <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-              Star your most important goals to show them here.
-            </p>
-          )}
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-lg font-semibold text-slate-900">All year goals</p>
         <div className="mt-4 space-y-3">
-          {state.goals.map((goal) => (
+          {activeGoals.map((goal) => (
             <details
               key={goal.id}
               className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
@@ -258,22 +226,22 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                     </p>
                   </>
                 )}
-                <div className="flex gap-3 text-xs">
-                  {editingGoalId !== goal.id && (
+                {editingGoalId !== goal.id && (
+                  <div className="flex gap-3 text-xs">
                     <button
                       className="font-semibold text-slate-600 hover:text-slate-900"
                       onClick={() => startEdit(goal)}
                     >
                       Edit goal
                     </button>
-                  )}
-                  <button
-                    className="font-semibold text-red-500 hover:text-red-600"
-                    onClick={() => deleteGoal(goal.id)}
-                  >
-                    Delete goal
-                  </button>
-                </div>
+                    <button
+                      className="font-semibold text-red-500 hover:text-red-600"
+                      onClick={() => deleteGoal(goal.id)}
+                    >
+                      Delete goal
+                    </button>
+                  </div>
+                )}
               </div>
             </details>
           ))}

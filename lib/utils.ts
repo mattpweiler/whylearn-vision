@@ -17,10 +17,22 @@ export const formatDateKey = (date: Date) => {
 
 export const monthKey = (date: Date) => formatDateKey(date).slice(0, 7);
 
+const parseLocalDateValue = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  if (
+    Number.isNaN(year) ||
+    Number.isNaN(month) ||
+    Number.isNaN(day)
+  ) {
+    return null;
+  }
+  return new Date(year, month - 1, day);
+};
+
 export const formatDisplayDate = (value?: string) => {
   if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  const date = parseLocalDateValue(value);
+  if (!date) return value;
   return date.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -29,8 +41,8 @@ export const formatDisplayDate = (value?: string) => {
 
 export const formatDateWithWeekday = (value?: string) => {
   if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  const date = parseLocalDateValue(value);
+  if (!date) return value;
   return date.toLocaleDateString(undefined, {
     weekday: "long",
     month: "short",
