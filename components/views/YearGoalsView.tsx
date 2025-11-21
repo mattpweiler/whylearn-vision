@@ -12,10 +12,8 @@ interface ViewProps {
 const defaultGoal = () => ({
   title: "",
   description: "",
-  lifeAreaId: "",
   priority: "medium" as PriorityLevel,
   targetDate: "",
-  isStarred: false,
 });
 
 export const YearGoalsView = ({ state, updateState }: ViewProps) => {
@@ -32,11 +30,16 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
   const [goalEdit, setGoalEdit] = useState({
     title: "",
     description: "",
-    lifeAreaId: "",
     priority: "medium" as PriorityLevel,
     targetDate: "",
-    isStarred: false,
   });
+  const [showNewGoalForm, setShowNewGoalForm] = useState(false);
+
+  const priorityBadgeStyles: Record<PriorityLevel, string> = {
+    high: "bg-rose-100 text-rose-700 border-rose-200",
+    medium: "bg-amber-100 text-amber-700 border-amber-200",
+    low: "bg-slate-100 text-slate-600 border-slate-200",
+  };
 
   const activeGoals = state.goals.filter((goal) => goal.status === "active");
 
@@ -59,11 +62,9 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
       id: generateId(),
       title: form.title.trim(),
       description: form.description?.trim(),
-      lifeAreaId: form.lifeAreaId ? Number(form.lifeAreaId) : undefined,
       priority: form.priority,
       targetDate: form.targetDate || endOfYear,
       status: "active",
-      isStarred: form.isStarred,
       createdAt: now,
     };
     updateState((prev) => ({ ...prev, goals: [goal, ...prev.goals] }));
@@ -85,10 +86,8 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
     setGoalEdit({
       title: goal.title,
       description: goal.description ?? "",
-      lifeAreaId: goal.lifeAreaId ? goal.lifeAreaId.toString() : "",
       priority: goal.priority,
       targetDate: goal.targetDate ?? "",
-      isStarred: goal.isStarred,
     });
   };
 
@@ -102,10 +101,8 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
               ...goal,
               title: goalEdit.title,
               description: goalEdit.description || undefined,
-              lifeAreaId: goalEdit.lifeAreaId ? Number(goalEdit.lifeAreaId) : undefined,
               priority: goalEdit.priority,
               targetDate: goalEdit.targetDate || undefined,
-              isStarred: goalEdit.isStarred,
             }
           : goal
       ),
@@ -123,11 +120,13 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
           {activeGoals.map((goal) => (
             <details
               key={goal.id}
-              className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
+              className="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition hover:border-slate-200 hover:bg-white hover:shadow-sm cursor-pointer"
             >
               <summary className="flex cursor-pointer items-center justify-between text-sm font-semibold text-slate-900">
                 <span>{goal.title}</span>
-                <span className="text-xs font-medium text-slate-500">
+                <span
+                  className={`text-xs font-semibold border rounded-full px-3 py-1 ${priorityBadgeStyles[goal.priority]}`}
+                >
                   {goal.priority.toUpperCase()}
                 </span>
               </summary>
@@ -152,20 +151,6 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                     <div className="grid gap-3 md:grid-cols-2 text-xs text-slate-500">
                       <select
                         className="rounded-xl border border-slate-200 px-2 py-1"
-                        value={goalEdit.lifeAreaId}
-                        onChange={(e) =>
-                          setGoalEdit((prev) => ({ ...prev, lifeAreaId: e.target.value }))
-                        }
-                      >
-                        <option value="">Any area</option>
-                        {state.lifeAreas.map((area) => (
-                          <option key={area.id} value={area.id}>
-                            {area.name}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        className="rounded-xl border border-slate-200 px-2 py-1"
                         value={goalEdit.priority}
                         onChange={(e) =>
                           setGoalEdit((prev) => ({
@@ -186,16 +171,6 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                           setGoalEdit((prev) => ({ ...prev, targetDate: e.target.value }))
                         }
                       />
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={goalEdit.isStarred}
-                          onChange={(e) =>
-                            setGoalEdit((prev) => ({ ...prev, isStarred: e.target.checked }))
-                          }
-                        />
-                        Star goal
-                      </label>
                     </div>
                     <div className="flex gap-2 text-xs">
                       <button
@@ -253,90 +228,74 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-lg font-semibold text-slate-900">New goal</p>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <label className="text-sm font-medium text-slate-600">
-            Title
-            <input
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-              value={form.title}
-              onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-              placeholder="Name your big rock"
-            />
-          </label>
-          <label className="text-sm font-medium text-slate-600">
-            Life area
-            <select
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-              value={form.lifeAreaId}
-              onChange={(e) => setForm((prev) => ({ ...prev, lifeAreaId: e.target.value }))}
-            >
-              <option value="">Any</option>
-              {state.lifeAreas.map((area) => (
-                <option key={area.id} value={area.id}>
-                  {area.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm font-medium text-slate-600">
-            Priority
-            <select
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-              value={form.priority}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  priority: e.target.value as PriorityLevel,
-                }))
-              }
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </label>
-          <label className="text-sm font-medium text-slate-600">
-            Target date
-            <input
-              type="date"
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-              value={form.targetDate}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, targetDate: e.target.value }))
-              }
-            />
-          </label>
-          <label className="md:col-span-2 text-sm font-medium text-slate-600">
-            Description
-            <textarea
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-              rows={3}
-              value={form.description}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, description: e.target.value }))
-              }
-            />
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            <input
-              type="checkbox"
-              checked={form.isStarred}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, isStarred: e.target.checked }))
-              }
-            />
-            Star this as one of my Big 3
-          </label>
-        </div>
-        <button
-          className="mt-4 w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white"
-          onClick={addGoal}
-        >
-          + New year goal
-        </button>
-      </section>
+      <button
+        className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 transition cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-900 hover:cursor-pointer"
+        onClick={() => setShowNewGoalForm((prev) => !prev)}
+      >
+        {showNewGoalForm ? "Cancel new goal" : "+ New year goal"}
+      </button>
+
+      {showNewGoalForm && (
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-lg font-semibold text-slate-900">New goal</p>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <label className="text-sm font-medium text-slate-600">
+              Title
+              <input
+                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+                value={form.title}
+                onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+                placeholder="Let's Start on That Dream"
+              />
+            </label>
+            <label className="text-sm font-medium text-slate-600">
+              Priority
+              <select
+                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+                value={form.priority}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    priority: e.target.value as PriorityLevel,
+                  }))
+                }
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </label>
+            <label className="text-sm font-medium text-slate-600">
+              Target date
+              <input
+                type="date"
+                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+                value={form.targetDate}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, targetDate: e.target.value }))
+                }
+              />
+            </label>
+            <label className="md:col-span-2 text-sm font-medium text-slate-600">
+              Description
+              <textarea
+                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+                rows={3}
+                value={form.description}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, description: e.target.value }))
+                }
+              />
+            </label>
+          </div>
+          <button
+            className="mt-4 w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white"
+            onClick={addGoal}
+          >
+            Create goal
+          </button>
+        </section>
+      )}
     </div>
   );
 };
