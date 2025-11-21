@@ -38,6 +38,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
   const habitDraftInitial = { name: "", description: "", lifeAreaId: "" };
   const [habitDraft, setHabitDraft] = useState(habitDraftInitial);
   const [editingHabitId, setEditingHabitId] = useState<string | null>(null);
+  const [editingHabitName, setEditingHabitName] = useState("");
   const [showHabitForm, setShowHabitForm] = useState(false);
 
   const saveFocus = () => {
@@ -67,6 +68,9 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
   };
 
   const toggleTask = (task: Task) => {
+    if (task.status === "done") {
+      setCelebrationDay(null);
+    }
     updateState((prev) => ({
       ...prev,
       tasks: prev.tasks.map((t) =>
@@ -213,11 +217,14 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
     );
 
   const toggleHabit = (habitId: string) => {
+    const completed = hasLog(habitId);
+    if (completed) {
+      setCelebrationDay(null);
+    }
     updateState((prev) => {
       const logs = prev.habitLogs.filter((log) =>
         !(log.habitId === habitId && log.logDate === today)
       );
-      const completed = hasLog(habitId);
       if (!completed) {
         logs.push({
           id: generateId(),
@@ -249,6 +256,10 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
       habits: prev.habits.filter((habit) => habit.id !== habitId),
       habitLogs: prev.habitLogs.filter((log) => log.habitId !== habitId),
     }));
+    if (editingHabitId === habitId) {
+      setEditingHabitId(null);
+      setEditingHabitName("");
+    }
   };
 
   const addDailyHabit = () => {
@@ -284,7 +295,51 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
 
     setHabitDraft(habitDraftInitial);
     setShowHabitForm(false);
+    setEditingHabitId(null);
+    setEditingHabitName("");
   };
+
+  const startHabitEdit = (habit: typeof todaysHabits[number]) => {
+    setEditingHabitId(habit.id);
+    setEditingHabitName(habit.name);
+  };
+
+  const cancelHabitEdit = () => {
+    setEditingHabitId(null);
+    setEditingHabitName("");
+  };
+
+  const saveHabitEdit = () => {
+    if (!editingHabitId || !editingHabitName.trim()) return;
+    updateDailyHabit(editingHabitId, { name: editingHabitName.trim() });
+    cancelHabitEdit();
+  };
+
+  const handleHabitCardClick = (
+    event: MouseEvent<HTMLDivElement>,
+    habitId: string
+  ) => {
+    if (editingHabitId === habitId) return;
+    const target = event.target as HTMLElement;
+    if (
+      target.closest("button") ||
+      target.closest("input") ||
+      target.closest("textarea") ||
+      target.closest("details")
+    ) {
+      return;
+    }
+    toggleHabit(habitId);
+  };
+
+  const totalFocusItems = todaysTasks.length + todaysHabits.length;
+  const completedFocusItems =
+    todaysTasks.filter((task) => task.status === "done").length +
+    todaysHabits.filter((habit) => hasLog(habit.id)).length;
+  const focusProgress =
+    totalFocusItems === 0
+      ? 0
+      : Math.round((completedFocusItems / totalFocusItems) * 100);
 
   const allTasksDone =
     todaysTasks.length > 0 &&
@@ -293,12 +348,11 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
     todaysHabits.length > 0 &&
     todaysHabits.every((habit) => hasLog(habit.id));
   const shouldCelebrate = allTasksDone && allHabitsDone;
-  const [hasCelebratedToday, setHasCelebratedToday] = useState(false);
-
-  const showCelebrationModal = shouldCelebrate && !hasCelebratedToday;
+  const [celebrationDay, setCelebrationDay] = useState<string | null>(null);
+  const showCelebrationModal = shouldCelebrate && celebrationDay !== today;
 
   const dismissCelebration = () => {
-    setHasCelebratedToday(true);
+    setCelebrationDay(today);
   };
 
   return (
@@ -324,7 +378,12 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
       )}
       <div className="grid gap-6">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-slate-500">Today’s focus</p>
+          <div className="flex items-start justify-between">
+            <p className="text-sm font-medium text-slate-500">
+              Today’s Focus &amp; Progress
+            </p>
+            <p className="text-xs text-slate-500">{focusProgress}% complete</p>
+          </div>
           {focus && !editingFocus ? (
             <div className="mt-3 flex items-center justify-between">
               <p className="text-lg font-semibold text-slate-900">{focus}</p>
@@ -354,6 +413,25 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
               </button>
             </div>
           )}
+          <div className="mt-4">
+          <div className="flex items-start justify-between">
+            <p className="text-sm font-medium text-slate-500">
+              Daily Progress Bar
+            </p>
+            <br />
+          </div>
+            <div className="h-8 rounded-full bg-slate-100">
+              <div
+                className="h-8 rounded-full bg-emerald-500 transition-all"
+                style={{ width: `${focusProgress}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              {totalFocusItems > 0
+                ? `${completedFocusItems} of ${totalFocusItems} items done`
+                : "Add a task or habit to start tracking progress."}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -504,62 +582,92 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
           )}
           {todaysHabits.map((habit) => {
             const completed = hasLog(habit.id);
+            const isEditingHabit = editingHabitId === habit.id;
             return (
               <div
                 key={habit.id}
-                className={`relative flex items-center gap-3 rounded-2xl border px-4 py-3 transition-colors ${
+                className={`relative flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition-colors ${
                   completed
                     ? "border-emerald-100 bg-emerald-50/70 hover:border-emerald-200 hover:bg-emerald-50"
                     : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                 }`}
+                onClick={(event) => handleHabitCardClick(event, habit.id)}
               >
-                <label className="flex flex-1 cursor-pointer items-center gap-3" htmlFor={habit.id}>
+                <div className="flex flex-1 items-center gap-3">
                   <input
-                    id={habit.id}
                     type="checkbox"
                     className="h-5 w-5 accent-emerald-500"
                     checked={completed}
                     onChange={() => toggleHabit(habit.id)}
                   />
-                  <div className="text-left">
-                    <p
-                      className={`font-medium ${
-                        completed ? "text-emerald-800" : "text-slate-900"
-                      }`}
-                    >
-                      {habit.name}
-                    </p>
-                    <p className="text-xs text-slate-500">{habit.description}</p>
+                  <div className="w-full text-left">
+                    {isEditingHabit ? (
+                      <div className="space-y-2">
+                        <input
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                          value={editingHabitName}
+                          onChange={(e) => setEditingHabitName(e.target.value)}
+                        />
+                        <div className="flex gap-2 text-xs">
+                          <button
+                            className="cursor-pointer rounded-full bg-slate-900 px-3 py-1 font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
+                            onClick={saveHabitEdit}
+                            disabled={!editingHabitName.trim()}
+                          >
+                            Save
+                          </button>
+                          <button
+                            className="cursor-pointer rounded-full px-3 py-1 text-slate-500 transition-colors hover:bg-slate-100"
+                            onClick={cancelHabitEdit}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p
+                          className={`font-medium ${
+                            completed ? "text-emerald-800" : "text-slate-900"
+                          }`}
+                        >
+                          {habit.name}
+                        </p>
+                        <p className="text-xs text-slate-500">{habit.description}</p>
+                      </>
+                    )}
                   </div>
-                </label>
+                </div>
                 <div className="relative">
-                  <details className="group">
-                    <summary className="flex cursor-pointer items-center rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100">
-                      <span className="text-xl">⋯</span>
-                    </summary>
-                    <div className="absolute right-0 top-10 z-10 w-32 rounded-2xl border border-slate-100 bg-white p-2 text-sm shadow-lg">
-                      <button
-                        className="w-full cursor-pointer rounded-lg px-2 py-1 text-left text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-                        onClick={() => {
-                          setShowHabitForm(true);
-                          setHabitDraft({
-                            name: habit.name,
-                            description: habit.description ?? "",
-                            lifeAreaId: habit.lifeAreaId?.toString() ?? "",
-                          });
-                          setEditingHabitId(habit.id);
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="w-full cursor-pointer rounded-lg px-2 py-1 text-left text-red-500 transition hover:bg-red-50"
-                        onClick={() => removeDailyHabit(habit.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </details>
+                  {!isEditingHabit && (
+                    <details className="group">
+                      <summary className="flex cursor-pointer items-center rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100">
+                        <span className="text-xl">⋯</span>
+                      </summary>
+                      <div className="absolute right-0 top-10 z-10 w-32 rounded-2xl border border-slate-100 bg-white p-2 text-sm shadow-lg">
+                        <button
+                          className="w-full cursor-pointer rounded-lg px-2 py-1 text-left text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            startHabitEdit(habit);
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="w-full cursor-pointer rounded-lg px-2 py-1 text-left text-red-500 transition hover:bg-red-50"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            removeDailyHabit(habit.id);
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </details>
+                  )}
                 </div>
               </div>
             );
