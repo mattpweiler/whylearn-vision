@@ -122,9 +122,9 @@ export const NetWorthProjectionChart = ({
               type="monotone"
               dataKey="netWorth"
               stroke="#10b981"
-              strokeWidth={3}
+              strokeWidth={6}
               dot={false}
-              activeDot={{ r: 5 }}
+              activeDot={{ r: 6 }}
             />
           </LineChart>
         </ResponsiveContainer>

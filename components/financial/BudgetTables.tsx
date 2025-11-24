@@ -1,6 +1,12 @@
 "use client";
 
-import { ExpenseItem, FinancialItem, IncomeItem } from "./types";
+import {
+  AssetItem,
+  ExpenseItem,
+  FinancialItem,
+  IncomeItem,
+  LiabilityItem,
+} from "./types";
 import { formatCurrency, generateItemId, parseAmountInput } from "./utils";
 
 interface BudgetTableProps<T extends FinancialItem> {
@@ -147,5 +153,35 @@ export const ExpenseTable = ({ items, onChange }: ExpenseTableProps) => (
     onChange={onChange}
     actionLabel="Add Expense"
     emptyHelper="List recurring bills, lifestyle, and investments."
+  />
+);
+
+interface AssetTableProps {
+  items: AssetItem[];
+  onChange: (items: AssetItem[]) => void;
+}
+
+export const AssetTable = ({ items, onChange }: AssetTableProps) => (
+  <BudgetTable
+    title="Assets"
+    items={items}
+    onChange={onChange}
+    actionLabel="Add Asset"
+    emptyHelper="Track savings, investments, business equity."
+  />
+);
+
+interface LiabilityTableProps {
+  items: LiabilityItem[];
+  onChange: (items: LiabilityItem[]) => void;
+}
+
+export const LiabilityTable = ({ items, onChange }: LiabilityTableProps) => (
+  <BudgetTable
+    title="Liabilities"
+    items={items}
+    onChange={onChange}
+    actionLabel="Add Liability"
+    emptyHelper="Mortgages, loans, and other obligations."
   />
 );

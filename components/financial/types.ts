@@ -11,20 +11,36 @@ export interface ExpenseItem {
 }
 
 export interface FinancialSettings {
-  currentNetWorth: number;
   annualReturnRate: number; // percent
   projectionYears: number;
   inflationRate: number;
 }
 
-export type FinancialItem = IncomeItem | ExpenseItem;
+export interface AssetItem {
+  id: string;
+  description: string;
+  amount: number;
+}
+
+export interface LiabilityItem {
+  id: string;
+  description: string;
+  amount: number;
+}
+
+export type FinancialItem =
+  | IncomeItem
+  | ExpenseItem
+  | AssetItem
+  | LiabilityItem;
 
 export const INCOME_STORAGE_KEY = "whylearn_incomes";
 export const EXPENSE_STORAGE_KEY = "whylearn_expenses";
+export const ASSET_STORAGE_KEY = "whylearn_assets";
+export const LIABILITY_STORAGE_KEY = "whylearn_liabilities";
 export const SETTINGS_STORAGE_KEY = "whylearn_financial_settings";
 
 export const DEFAULT_FINANCIAL_SETTINGS: FinancialSettings = {
-  currentNetWorth: 0,
   annualReturnRate: 5,
   projectionYears: 5,
   inflationRate: 2,

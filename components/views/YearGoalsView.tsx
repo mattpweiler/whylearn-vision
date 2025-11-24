@@ -34,6 +34,7 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
     targetDate: "",
   });
   const [showNewGoalForm, setShowNewGoalForm] = useState(false);
+  const [showGoalTips, setShowGoalTips] = useState(false);
 
   const priorityBadgeStyles: Record<PriorityLevel, string> = {
     high: "bg-rose-100 text-rose-700 border-rose-200",
@@ -115,7 +116,37 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
   return (
     <div className="space-y-6">
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-lg font-semibold text-slate-900">Big yearly goals</p>
+        <div className="flex items-center gap-2">
+          <p className="text-lg font-semibold text-slate-900">Big yearly goals</p>
+          <button
+            type="button"
+            className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-xs font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
+            onClick={() => setShowGoalTips((prev) => !prev)}
+            aria-label="Goal inspiration tips"
+          >
+            i
+          </button>
+        </div>
+        {showGoalTips && (
+          <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600">
+            <p className="font-semibold text-slate-800">Need inspiration?</p>
+            <p className="mt-1">
+              Think about goals that move different areas of your life forward:{" "}
+              <span className="font-medium text-slate-900">
+                Financial, Health, Relationships, Career, Personal Growth, and Adventure.
+              </span>
+            </p>
+            <ul className="mt-3 list-disc space-y-1 pl-5">
+              <li>Financial: e.g., “Max out Roth IRA” or “Pay off $10k debt.”</li>
+              <li>Health: “Run a half marathon” or “Dial nutrition to 80% whole foods.”</li>
+              <li>Social: “Host a monthly meetup” or “Plan a family trip.”</li>
+              <li>Personal: “Read 24 books” or “Learn conversational Spanish.”</li>
+            </ul>
+            <p className="mt-2 text-xs text-slate-500">
+              Pick 3–5 quests that feel energizing and measurable for this year.
+            </p>
+          </div>
+        )}
         <div className="mt-4 space-y-3">
           {activeGoals.map((goal) => (
             <details
