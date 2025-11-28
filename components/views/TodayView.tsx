@@ -2,7 +2,12 @@
 
 import { MouseEvent, useMemo, useState } from "react";
 import { AppState, Task } from "@/lib/types";
-import { generateId, todayKey } from "@/lib/utils";
+import {
+  generateId,
+  todayKey,
+  taskEffectiveDate,
+  isTaskCompleted,
+} from "@/lib/utils";
 
 interface ViewProps {
   state: AppState;
@@ -11,16 +16,15 @@ interface ViewProps {
 
 export const TodayView = ({ state, updateState }: ViewProps) => {
   const today = todayKey();
-  const todaysTasks = useMemo(
-    () =>
-      state.tasks
-        .filter((task) => task.scheduledFor === today)
-        .sort((a, b) => a.orderIndex - b.orderIndex),
-    [state.tasks, today]
-  );
+  const todaysTasks = useMemo(() => {
+    const tasksForToday = state.tasks.filter(
+      (task) => taskEffectiveDate(task) === today
+    );
+    return tasksForToday.sort((a, b) => a.orderIndex - b.orderIndex);
+  }, [state.tasks, today]);
   const orderedTodaysTasks = useMemo(() => {
-    const pending = todaysTasks.filter((task) => task.status !== "done");
-    const done = todaysTasks.filter((task) => task.status === "done");
+    const pending = todaysTasks.filter((task) => !isTaskCompleted(task));
+    const done = todaysTasks.filter((task) => isTaskCompleted(task));
     return [...pending, ...done];
   }, [todaysTasks]);
 
@@ -68,7 +72,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
   };
 
   const toggleTask = (task: Task) => {
-    if (task.status === "done") {
+    if (isTaskCompleted(task)) {
       setCelebrationDay(null);
     }
     updateState((prev) => ({
@@ -77,7 +81,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
         t.id === task.id
           ? {
               ...t,
-              status: t.status === "done" ? "todo" : "done",
+              status: isTaskCompleted(t) ? "todo" : "done",
             }
           : t
       ),
@@ -115,7 +119,8 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
           ? {
               ...t,
               scheduledFor: local,
-              status: t.status === "done" ? "todo" : t.status,
+              scheduledDate: local,
+              status: isTaskCompleted(t) ? "todo" : t.status,
             }
           : t
       ),
@@ -170,6 +175,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
           priority: "medium",
           orderIndex: prev.tasks.length + 1,
           scheduledFor: today,
+          scheduledDate: today,
           createdAt: now,
         },
       ],
@@ -334,7 +340,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
 
   const totalFocusItems = todaysTasks.length + todaysHabits.length;
   const completedFocusItems =
-    todaysTasks.filter((task) => task.status === "done").length +
+    todaysTasks.filter((task) => isTaskCompleted(task)).length +
     todaysHabits.filter((habit) => hasLog(habit.id)).length;
   const focusProgress =
     totalFocusItems === 0
@@ -343,7 +349,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
 
   const allTasksDone =
     todaysTasks.length > 0 &&
-    todaysTasks.every((task) => task.status === "done");
+    todaysTasks.every((task) => isTaskCompleted(task));
   const allHabitsDone =
     todaysHabits.length > 0 &&
     todaysHabits.every((habit) => hasLog(habit.id));
@@ -458,7 +464,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
               0,
               todaysTasks.findIndex((t) => t.id === task.id)
             );
-            const isDone = task.status === "done";
+            const isDone = isTaskCompleted(task);
             return (
               <div
                 key={task.id}

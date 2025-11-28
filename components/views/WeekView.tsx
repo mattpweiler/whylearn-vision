@@ -12,6 +12,7 @@ import {
   tasksByDateWithinRange,
   todayKey,
   weekDateKeys,
+  isTaskCompleted,
 } from "@/lib/utils";
 
 interface ViewProps {
@@ -88,7 +89,7 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
       ...prev,
       tasks: prev.tasks.map((t) =>
         t.id === task.id
-          ? { ...t, status: t.status === "done" ? "todo" : "done" }
+          ? { ...t, status: isTaskCompleted(t) ? "todo" : "done" }
           : t
       ),
     }));
@@ -102,6 +103,7 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
           ? {
               ...t,
               scheduledFor: day,
+              scheduledDate: day,
             }
           : t
       ),
@@ -123,6 +125,7 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
           priority: "medium",
           orderIndex: prev.tasks.length + 1,
           scheduledFor: selectedDay,
+          scheduledDate: selectedDay,
           createdAt: now,
         },
       ],
@@ -157,6 +160,7 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
               title: taskEdit.title,
               priority: taskEdit.priority,
               scheduledFor: taskEdit.scheduledFor,
+              scheduledDate: taskEdit.scheduledFor,
             }
           : task
       ),
@@ -259,7 +263,7 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
                     <div className="flex flex-1 items-center gap-3 text-sm">
                       <input
                         type="checkbox"
-                        checked={task.status === "done"}
+                        checked={isTaskCompleted(task)}
                         onChange={() => toggleTask(task)}
                       />
                       {editingTaskId === task.id ? (
@@ -318,7 +322,9 @@ export const WeekView = ({ state, updateState }: ViewProps) => {
                       ) : (
                         <span
                           className={`font-medium ${
-                            task.status === "done" ? "text-emerald-700" : "text-slate-900"
+                            isTaskCompleted(task)
+                              ? "text-emerald-700"
+                              : "text-slate-900"
                           }`}
                           onClick={() => startEdit(task)}
                         >

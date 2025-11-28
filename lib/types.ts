@@ -22,7 +22,13 @@ export interface LifeAreaScore {
   createdAt: string;
 }
 
-export type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
+export type TaskStatus =
+  | "todo"
+  | "in_progress"
+  | "done"
+  | "cancelled"
+  | "pending"
+  | "completed";
 export type PriorityLevel = "low" | "medium" | "high";
 export type GoalStatus = "active" | "completed" | "archived";
 export type HabitCadence = "daily" | "weekly" | "monthly" | "custom";
@@ -67,9 +73,13 @@ export interface Task {
   priority: PriorityLevel;
   lifeAreaId?: number;
   goalId?: string;
+  projectId?: string;
   habitId?: string;
   dueDate?: string;
   scheduledFor?: string;
+  scheduledDate?: string | null;
+  month?: string;
+  backlogCategory?: string;
   orderIndex: number;
   createdAt: string;
 }
@@ -116,7 +126,8 @@ export interface UserSettings {
     | "month"
     | "year"
     | "direction"
-    | "financial";
+    | "financial"
+    | "backlog";
   weekStartDay: 0 | 1;
   showLifeAreaSummaryOnToday: boolean;
   autoGenerateTasksFromAi: boolean;
@@ -149,4 +160,5 @@ export type ViewKey =
   | "year"
   | "direction"
   | "financial"
+  | "backlog"
   | "settings";

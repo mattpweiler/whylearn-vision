@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AppState, Task } from "@/lib/types";
+import { AppState } from "@/lib/types";
 import {
-  formatDisplayDate,
+  formatDateWithWeekday,
   generateId,
   monthKey,
-  tasksForMonth,
+  monthLabel,
+  taskEffectiveDate,
 } from "@/lib/utils";
 
 interface ViewProps {
@@ -15,37 +16,69 @@ interface ViewProps {
 }
 
 export const MonthView = ({ state, updateState }: ViewProps) => {
-  const key = monthKey(new Date());
+  const now = new Date();
+  const key = monthKey(now);
+  const currentMonthLabel = monthLabel(now);
   const monthlyReflection = state.reflections.find(
     (ref) => ref.type === "monthly" && ref.content?.month === key
   );
-  const [focus, setFocus] = useState(
-    monthlyReflection?.content?.focus ?? ""
-  );
-  const [newMilestone, setNewMilestone] = useState("");
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [taskEdit, setTaskEdit] = useState({
-    title: "",
-    scheduledFor: "",
-    dueDate: "",
-  });
+
+  const [focus, setFocus] = useState(monthlyReflection?.content?.focus ?? "");
+  const [newBacklogTitle, setNewBacklogTitle] = useState("");
+  const [newBacklogGoalId, setNewBacklogGoalId] = useState("");
+  const [scheduleDrafts, setScheduleDrafts] = useState<Record<string, string>>({});
 
   const milestones: string[] = monthlyReflection?.content?.milestones ?? [];
 
-  const monthTasks = useMemo(() => tasksForMonth(state.tasks, key), [
-    state.tasks,
-    key,
-  ]);
-  const completedCount = monthTasks.filter((task) => task.status === "done").length;
+  const goalLookup = useMemo(() => {
+    const map: Record<string, string> = {};
+    state.goals.forEach((goal) => {
+      map[goal.id] = goal.title;
+    });
+    return map;
+  }, [state.goals]);
 
-  const goalsThisMonth = state.goals.filter((goal) =>
-    goal.targetDate?.startsWith(key)
+  const backlogTasks = useMemo(
+    () =>
+      state.tasks
+        .filter((task) => {
+          const monthMatch = (task.month ?? currentMonthLabel) === currentMonthLabel;
+          const hasSchedule = Boolean(task.scheduledDate) || Boolean(task.scheduledFor);
+          const isComplete =
+            task.status === "done" || task.status === "completed";
+          return monthMatch && !hasSchedule && !isComplete;
+        })
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ),
+    [state.tasks, currentMonthLabel]
   );
 
+  const scheduledTasks = useMemo(
+    () =>
+      state.tasks
+        .filter((task) => {
+          const scheduled = taskEffectiveDate(task);
+          if (!scheduled) return false;
+          return scheduled.startsWith(key);
+        })
+        .sort((a, b) => {
+          const aDate = taskEffectiveDate(a) ?? "";
+          const bDate = taskEffectiveDate(b) ?? "";
+          return aDate.localeCompare(bDate);
+        }),
+    [state.tasks, key]
+  );
+
+  const completedCount = scheduledTasks.filter(
+    (task) => task.status === "done" || task.status === "completed"
+  ).length;
+
   const saveFocus = () => {
-    const now = new Date().toISOString();
+    const stamp = new Date().toISOString();
     updateState((prev) => {
-      const base = {
+      const payload = {
         id: monthlyReflection?.id ?? generateId(),
         type: "monthly" as const,
         content: {
@@ -53,41 +86,12 @@ export const MonthView = ({ state, updateState }: ViewProps) => {
           milestones,
           month: key,
         },
-        createdAt: monthlyReflection?.createdAt ?? now,
+        createdAt: monthlyReflection?.createdAt ?? stamp,
       };
       const filtered = monthlyReflection
         ? prev.reflections.filter((ref) => ref.id !== monthlyReflection.id)
         : prev.reflections;
-      return {
-        ...prev,
-        reflections: [...filtered, base],
-      };
-    });
-  };
-
-  const addMilestone = () => {
-    if (!newMilestone.trim()) return;
-    const updated = [...milestones, newMilestone.trim()];
-    setNewMilestone("");
-    const now = new Date().toISOString();
-    updateState((prev) => {
-      const base = {
-        id: monthlyReflection?.id ?? generateId(),
-        type: "monthly" as const,
-        content: {
-          focus,
-          milestones: updated,
-          month: key,
-        },
-        createdAt: monthlyReflection?.createdAt ?? now,
-      };
-      const filtered = monthlyReflection
-        ? prev.reflections.filter((ref) => ref.id !== monthlyReflection.id)
-        : prev.reflections;
-      return {
-        ...prev,
-        reflections: [...filtered, base],
-      };
+      return { ...prev, reflections: [...filtered, payload] };
     });
   };
 
@@ -98,34 +102,82 @@ export const MonthView = ({ state, updateState }: ViewProps) => {
     }));
   };
 
-  const startEdit = (task: Task) => {
-    setEditingTaskId(task.id);
-    setTaskEdit({
-      title: task.title,
-      scheduledFor: task.scheduledFor ?? "",
-      dueDate: task.dueDate ?? "",
-    });
+  const addBacklogTask = () => {
+    if (!newBacklogTitle.trim()) return;
+    const stamp = new Date().toISOString();
+    updateState((prev) => ({
+      ...prev,
+      tasks: [
+        ...prev.tasks,
+        {
+          id: generateId(),
+          title: newBacklogTitle.trim(),
+          status: "todo",
+          priority: "medium",
+          orderIndex: prev.tasks.length + 1,
+          goalId: newBacklogGoalId || undefined,
+          month: currentMonthLabel,
+          scheduledDate: null,
+          createdAt: stamp,
+        },
+      ],
+    }));
+    setNewBacklogTitle("");
+    setNewBacklogGoalId("");
   };
 
-  const saveTaskEdit = () => {
-    if (!editingTaskId) return;
+  const updateTaskGoalLink = (taskId: string, goalId: string) => {
     updateState((prev) => ({
       ...prev,
       tasks: prev.tasks.map((task) =>
-        task.id === editingTaskId
+        task.id === taskId ? { ...task, goalId: goalId || undefined } : task
+      ),
+    }));
+  };
+
+  const scheduleBacklogTask = (taskId: string) => {
+    const date = scheduleDrafts[taskId];
+    if (!date) return;
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((task) =>
+        task.id === taskId
           ? {
               ...task,
-              title: taskEdit.title,
-              scheduledFor: taskEdit.scheduledFor || undefined,
-              dueDate: taskEdit.dueDate || undefined,
+              scheduledDate: date,
+              scheduledFor: date,
+              month: currentMonthLabel,
             }
           : task
       ),
     }));
-    setEditingTaskId(null);
+    setScheduleDrafts((prev) => ({ ...prev, [taskId]: "" }));
   };
 
-  const cancelTaskEdit = () => setEditingTaskId(null);
+  const unscheduleTask = (taskId: string) => {
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((task) =>
+        task.id === taskId
+          ? { ...task, scheduledDate: null, scheduledFor: undefined }
+          : task
+      ),
+    }));
+  };
+
+  const toggleTaskCompletion = (taskId: string) => {
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              status: task.status === "done" ? "todo" : "done",
+            }
+          : task
+      ),
+    }));
+  };
 
   return (
     <div className="space-y-6">
@@ -150,148 +202,198 @@ export const MonthView = ({ state, updateState }: ViewProps) => {
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-1">
           <p className="text-lg font-semibold text-slate-900">
-            Key projects / milestones
+            This Month’s Backlog
           </p>
-          <div className="mt-4 space-y-3">
-            {goalsThisMonth.map((goal) => (
-              <div key={goal.id} className="rounded-2xl bg-slate-50 p-4">
-                <p className="font-medium text-slate-900">{goal.title}</p>
-                <p className="text-xs text-slate-500">
-                  Due {formatDisplayDate(goal.targetDate)}
-                </p>
-              </div>
-            ))}
-            {milestones.map((milestone, idx) => (
-              <div key={`${milestone}-${idx}`} className="rounded-2xl border border-slate-100 p-4">
-                <p className="text-sm font-medium text-slate-700">{milestone}</p>
-              </div>
-            ))}
-            {goalsThisMonth.length === 0 && milestones.length === 0 && (
-              <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-                No projects logged yet.
-              </p>
-            )}
-          </div>
-          <div className="mt-4 flex gap-2">
-            <input
-              className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm"
-              placeholder="Add monthly milestone"
-              value={newMilestone}
-              onChange={(e) => setNewMilestone(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && addMilestone()}
-            />
-            <button
-              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
-              onClick={addMilestone}
-            >
-              Add
-            </button>
-          </div>
+          <p className="text-sm text-slate-500">
+            Tasks you want to complete this month but haven’t scheduled yet.
+          </p>
         </div>
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-lg font-semibold text-slate-900">
-            This month’s tasks overview
-          </p>
-          <div className="mt-4 grid grid-cols-2 gap-4">
-            <div className="rounded-2xl bg-slate-50 p-4 text-center">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                Scheduled
-              </p>
-              <p className="text-3xl font-semibold text-slate-900">
-                {monthTasks.length}
-              </p>
-            </div>
-            <div className="rounded-2xl bg-slate-50 p-4 text-center">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                Completed
-              </p>
-              <p className="text-3xl font-semibold text-slate-900">
-                {completedCount}
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 space-y-2">
-            {monthTasks.map((task) => (
-              <div
-                key={task.id}
-                className="flex items-center justify-between rounded-2xl border border-slate-100 p-3 text-sm"
-              >
-                <div className="flex-1">
-                  {editingTaskId === task.id ? (
-                    <div className="space-y-2 rounded-2xl border border-slate-200 p-3">
-                      <input
-                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                        value={taskEdit.title}
-                        onChange={(e) =>
-                          setTaskEdit((prev) => ({ ...prev, title: e.target.value }))
-                        }
-                      />
-                      <div className="flex flex-wrap gap-2 text-xs text-slate-500">
-                        <input
-                          type="date"
-                          className="rounded-xl border border-slate-200 px-2 py-1"
-                          value={taskEdit.scheduledFor}
-                          onChange={(e) =>
-                            setTaskEdit((prev) => ({ ...prev, scheduledFor: e.target.value }))
-                          }
-                        />
-                        <input
-                          type="date"
-                          className="rounded-xl border border-slate-200 px-2 py-1"
-                          value={taskEdit.dueDate}
-                          onChange={(e) =>
-                            setTaskEdit((prev) => ({ ...prev, dueDate: e.target.value }))
-                          }
-                        />
-                      </div>
-                      <div className="flex gap-2 text-xs">
-                        <button
-                          className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white"
-                          onClick={saveTaskEdit}
-                        >
-                          Save
-                        </button>
-                        <button
-                          className="rounded-full px-3 py-1 text-slate-500"
-                          onClick={cancelTaskEdit}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      className="text-left font-medium text-slate-900"
-                      onClick={() => startEdit(task)}
-                    >
-                      {task.title}
-                    </button>
-                  )}
-                  {editingTaskId !== task.id && (
+        <div className="mt-4 space-y-3">
+          {backlogTasks.map((task) => (
+            <div
+              key={task.id}
+              className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-slate-900">{task.title}</p>
+                  {task.goalId ? (
                     <p className="text-xs text-slate-500">
-                      {task.scheduledFor
-                        ? `Scheduled ${formatDisplayDate(task.scheduledFor)}`
-                        : `Due ${formatDisplayDate(task.dueDate)}`}
+                      Linked goal: {goalLookup[task.goalId]}
                     </p>
+                  ) : (
+                    <p className="text-xs text-slate-500">No goal linked</p>
                   )}
                 </div>
                 <button
-                  className="rounded-full px-3 py-1 text-xs text-red-500 hover:text-red-600"
+                  className="text-xs font-semibold text-rose-500 hover:text-rose-600"
                   onClick={() => deleteTask(task.id)}
                 >
                   Delete
                 </button>
               </div>
+              <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-center">
+                <select
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm lg:w-56"
+                  value={task.goalId ?? ""}
+                  onChange={(e) => updateTaskGoalLink(task.id, e.target.value)}
+                >
+                  <option value="">No goal link</option>
+                  {state.goals.map((goal) => (
+                    <option key={goal.id} value={goal.id}>
+                      {goal.title}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:flex-1">
+                  <input
+                    type="date"
+                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                    value={scheduleDrafts[task.id] ?? ""}
+                    onChange={(e) =>
+                      setScheduleDrafts((prev) => ({
+                        ...prev,
+                        [task.id]: e.target.value,
+                      }))
+                    }
+                  />
+                  <button
+                    className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                    onClick={() => scheduleBacklogTask(task.id)}
+                    disabled={!scheduleDrafts[task.id]}
+                  >
+                    Schedule
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          {backlogTasks.length === 0 && (
+            <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+              No backlog tasks yet. Capture a few monthly moves below.
+            </p>
+          )}
+        </div>
+        <div className="mt-4 flex flex-col gap-3 md:flex-row">
+          <input
+            className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+            placeholder="Add task for this month…"
+            value={newBacklogTitle}
+            onChange={(e) => setNewBacklogTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addBacklogTask()}
+          />
+          <select
+            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm md:w-60"
+            value={newBacklogGoalId}
+            onChange={(e) => setNewBacklogGoalId(e.target.value)}
+          >
+            <option value="">No goal link</option>
+            {state.goals.map((goal) => (
+              <option key={goal.id} value={goal.id}>
+                {goal.title}
+              </option>
             ))}
-            {monthTasks.length === 0 && (
-              <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-                No tasks mapped to this month yet.
-              </p>
-            )}
+          </select>
+          <button
+            className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white"
+            onClick={addBacklogTask}
+          >
+            Add Task
+          </button>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-1">
+          <p className="text-lg font-semibold text-slate-900">
+            Scheduled Tasks Overview
+          </p>
+          <p className="text-sm text-slate-500">
+            Tasks scheduled for this month.
+          </p>
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl bg-slate-50 p-4 text-center">
+            <p className="text-xs uppercase tracking-wide text-slate-500">
+              Scheduled
+            </p>
+            <p className="text-3xl font-semibold text-slate-900">
+              {scheduledTasks.length}
+            </p>
           </div>
+          <div className="rounded-2xl bg-slate-50 p-4 text-center">
+            <p className="text-xs uppercase tracking-wide text-slate-500">
+              Completed
+            </p>
+            <p className="text-3xl font-semibold text-slate-900">
+              {completedCount}
+            </p>
+          </div>
+        </div>
+        <div className="mt-6 space-y-3">
+          {scheduledTasks.length === 0 && (
+            <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+              No tasks scheduled this month.
+            </p>
+          )}
+          {scheduledTasks.map((task) => {
+            const scheduledDate = task.scheduledDate ?? task.scheduledFor ?? "";
+            const isDone =
+              task.status === "done" || task.status === "completed";
+            return (
+              <div
+                key={task.id}
+                className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <p
+                    className={`font-semibold ${
+                      isDone ? "text-emerald-600 line-through" : "text-slate-900"
+                    }`}
+                  >
+                    {task.title}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {scheduledDate
+                      ? formatDateWithWeekday(scheduledDate)
+                      : "No date"}
+                  </p>
+                  {task.goalId && (
+                    <p className="text-xs text-slate-500">
+                      Linked goal: {goalLookup[task.goalId]}
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <button
+                    className={`rounded-full px-3 py-1 font-semibold ${
+                      isDone
+                        ? "bg-slate-200 text-slate-700"
+                        : "bg-emerald-100 text-emerald-700"
+                    }`}
+                    onClick={() => toggleTaskCompletion(task.id)}
+                  >
+                    {isDone ? "Mark pending" : "Mark done"}
+                  </button>
+                  <button
+                    className="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600"
+                    onClick={() => unscheduleTask(task.id)}
+                  >
+                    Move to backlog
+                  </button>
+                  <button
+                    className="rounded-full px-3 py-1 font-semibold text-red-500"
+                    onClick={() => deleteTask(task.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
     </div>

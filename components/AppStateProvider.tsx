@@ -13,6 +13,7 @@ import {
   currentTimezone,
   defaultSettings,
   generateId,
+  monthLabel,
 } from "@/lib/utils";
 
 interface AppStateContextValue {
@@ -88,6 +89,7 @@ const sampleTasks = () => {
   const localTime = new Date(today.getTime() - tzOffset * 60000)
     .toISOString()
     .slice(0, 10);
+  const currentMonth = monthLabel(today);
   return [
     {
       id: generateId(),
@@ -97,6 +99,8 @@ const sampleTasks = () => {
       lifeAreaId: 1,
       orderIndex: 1,
       scheduledFor: localTime,
+      scheduledDate: localTime,
+      month: currentMonth,
       createdAt: today.toISOString(),
     },
     {
@@ -106,7 +110,8 @@ const sampleTasks = () => {
       priority: "medium" as const,
       lifeAreaId: 5,
       orderIndex: 2,
-      scheduledFor: localTime,
+      month: currentMonth,
+      scheduledDate: null,
       createdAt: today.toISOString(),
     },
   ];

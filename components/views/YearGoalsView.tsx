@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { AppState, Goal, PriorityLevel } from "@/lib/types";
-import { formatDisplayDate, generateId } from "@/lib/utils";
+import {
+  formatDisplayDate,
+  generateId,
+  isTaskCompleted,
+} from "@/lib/utils";
 
 interface ViewProps {
   state: AppState;
@@ -43,14 +47,24 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
   };
 
   const activeGoals = state.goals.filter((goal) => goal.status === "active");
+  const completedGoals = state.goals.filter((goal) => goal.status === "completed");
+  const progressTotal = activeGoals.length + completedGoals.length;
+  const progressPercent =
+    progressTotal === 0 ? 0 : Math.round((completedGoals.length / progressTotal) * 100);
 
   const taskCounts = useMemo(() => {
-    const map: Record<string, number> = {};
+    const totals: Record<string, { total: number; done: number }> = {};
     state.tasks.forEach((task) => {
       if (!task.goalId) return;
-      map[task.goalId] = (map[task.goalId] ?? 0) + 1;
+      if (!totals[task.goalId]) {
+        totals[task.goalId] = { total: 0, done: 0 };
+      }
+      totals[task.goalId].total += 1;
+      if (isTaskCompleted(task)) {
+        totals[task.goalId].done += 1;
+      }
     });
-    return map;
+    return totals;
   }, [state.tasks]);
 
   const addGoal = () => {
@@ -142,17 +156,37 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
               <li>Social: “Host a monthly meetup” or “Plan a family trip.”</li>
               <li>Personal: “Read 24 books” or “Learn conversational Spanish.”</li>
             </ul>
-            <p className="mt-2 text-xs text-slate-500">
-              Pick 3–5 quests that feel energizing and measurable for this year.
-            </p>
-          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            Pick 3–5 quests that feel energizing and measurable for this year.
+          </p>
+        </div>
         )}
+        <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+          <div className="flex items-center justify-between text-sm text-slate-600">
+            <span>
+              Completed {completedGoals.length} of {progressTotal || "—"} goals
+            </span>
+            <span className="font-semibold text-slate-900">{progressPercent}%</span>
+          </div>
+          <div className="mt-2 h-2 rounded-full bg-slate-200">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-all"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
         <div className="mt-4 space-y-3">
-          {activeGoals.map((goal) => (
-            <details
-              key={goal.id}
-              className="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition hover:border-slate-200 hover:bg-white hover:shadow-sm cursor-pointer"
-            >
+          {activeGoals.map((goal) => {
+            const goalStats = taskCounts[goal.id] ?? { total: 0, done: 0 };
+            const goalPercent =
+              goalStats.total === 0
+                ? 0
+                : Math.min(100, Math.round((goalStats.done / goalStats.total) * 100));
+            return (
+              <details
+                key={goal.id}
+                className="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition hover:border-slate-200 hover:bg-white hover:shadow-sm cursor-pointer"
+              >
               <summary className="flex cursor-pointer items-center justify-between text-sm font-semibold text-slate-900">
                 <span>{goal.title}</span>
                 <span
@@ -227,9 +261,27 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                     <p className="text-xs text-slate-500">
                       Target date: {formatDisplayDate(goal.targetDate)}
                     </p>
-                    <p className="text-xs text-slate-500">
-                      Linked tasks: {taskCounts[goal.id] ?? 0}
-                    </p>
+                    <div className="rounded-2xl border border-slate-100 bg-white/70 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Task progress
+                      </p>
+                      <div className="mt-1 flex items-center justify-between text-xs text-slate-600">
+                        <span>
+                          {goalStats.done}/{goalStats.total} tasks
+                        </span>
+                        <span className="font-semibold text-slate-900">
+                          {goalPercent}%
+                        </span>
+                      </div>
+                      <div className="mt-1 h-2 rounded-full bg-slate-200">
+                        <div
+                          className="h-full rounded-full bg-emerald-500 transition-all"
+                          style={{
+                            width: `${goalPercent}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
                   </>
                 )}
                 {editingGoalId !== goal.id && (
@@ -250,7 +302,8 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                 )}
               </div>
             </details>
-          ))}
+          );
+          })}
           {state.goals.length === 0 && (
             <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
               No goals yet. Create one to see it here.

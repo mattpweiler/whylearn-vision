@@ -17,6 +17,18 @@ export const formatDateKey = (date: Date) => {
 
 export const monthKey = (date: Date) => formatDateKey(date).slice(0, 7);
 
+export const monthLabel = (date: Date) =>
+  date.toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+
+export const taskEffectiveDate = (task: Task) =>
+  task.scheduledDate ?? task.scheduledFor ?? task.dueDate ?? undefined;
+
+export const isTaskCompleted = (task: Task) =>
+  task.status === "done" || task.status === "completed";
+
 const parseLocalDateValue = (value: string) => {
   const [year, month, day] = value.split("-").map(Number);
   if (
@@ -86,13 +98,13 @@ export const isWithinRange = (value?: string, start?: string, end?: string) => {
 
 export const tasksForMonth = (tasks: Task[], key: string) =>
   tasks
-    .filter(
-      (task) =>
-        task.scheduledFor?.startsWith(key) || task.dueDate?.startsWith(key)
-    )
+    .filter((task) => {
+      const effective = taskEffectiveDate(task);
+      return effective ? effective.startsWith(key) : false;
+    })
     .sort((a, b) => {
-      const aDate = a.scheduledFor ?? a.dueDate ?? "";
-      const bDate = b.scheduledFor ?? b.dueDate ?? "";
+      const aDate = taskEffectiveDate(a) ?? "";
+      const bDate = taskEffectiveDate(b) ?? "";
       return aDate.localeCompare(bDate);
     });
 
@@ -106,9 +118,10 @@ export const tasksByDateWithinRange = (
 ) => {
   const grouped: Record<string, Task[]> = {};
   tasks.forEach((task) => {
-    if (task.scheduledFor && isWithinRange(task.scheduledFor, start, end)) {
-      if (!grouped[task.scheduledFor]) grouped[task.scheduledFor] = [];
-      grouped[task.scheduledFor].push(task);
+    const effective = taskEffectiveDate(task);
+    if (effective && isWithinRange(effective, start, end)) {
+      if (!grouped[effective]) grouped[effective] = [];
+      grouped[effective].push(task);
     }
   });
   Object.keys(grouped).forEach((key) => {

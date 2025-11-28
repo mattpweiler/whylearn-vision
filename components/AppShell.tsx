@@ -11,6 +11,7 @@ import { SettingsView } from "@/components/views/SettingsView";
 import { TodayView } from "@/components/views/TodayView";
 import { WeekView } from "@/components/views/WeekView";
 import { YearGoalsView } from "@/components/views/YearGoalsView";
+import { BacklogView } from "@/components/views/BacklogView";
 import { ViewKey } from "@/lib/types";
 
 const meta: Record<ViewKey, { title: string; subtitle: string }> = {
@@ -29,6 +30,10 @@ const meta: Record<ViewKey, { title: string; subtitle: string }> = {
   year: {
     title: "Year Goals",
     subtitle: "Only You Decide How Successful Your Year Is",
+  },
+  backlog: {
+    title: "Backlog Tasks",
+    subtitle: "Capture, organize, and ready tasks for future scheduling.",
   },
   direction: {
     title: "Direction & Purpose",
@@ -51,6 +56,7 @@ const viewOrder: ViewKey[] = [
   "year",
   "direction",
   "financial",
+  "backlog",
   "settings",
 ];
 
@@ -85,6 +91,8 @@ export const AppShell = () => {
         return (
           <FinancialPlannerView state={state} updateState={updateState} />
         );
+      case "backlog":
+        return <BacklogView state={state} updateState={updateState} />;
       case "settings":
         return <SettingsView state={state} updateState={updateState} />;
       case "today":
