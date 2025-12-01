@@ -25,6 +25,8 @@ export default function AppWorkspacePage() {
     );
   }
 
+  console.log(isLoading, session);
+
   return (
     <AppStateProvider
       mode="supabase"

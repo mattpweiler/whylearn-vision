@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/components/providers/SupabaseProvider";
@@ -17,6 +18,7 @@ export const PageHeader = ({
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const isDemo = !session;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -49,38 +51,48 @@ export const PageHeader = ({
         <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
         <p className="text-sm text-slate-500">{subtitle}</p>
       </div>
-      <div className="relative" ref={menuRef}>
-        <button
-          type="button"
-          className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-left text-xs text-slate-500 transition hover:border-slate-200 hover:cursor-pointer"
-          onClick={() => {
-            if (showMenu) setMenuOpen((open) => !open);
-          }}
-          disabled={!showMenu}
-        >
-          <span className="block">Logged in as</span>
-          <span className="text-sm font-semibold text-slate-900">
-            {profileName}
-          </span>
-        </button>
-        {menuOpen ? (
-          <div className="absolute right-0 z-20 mt-2 w-44 rounded-2xl border border-slate-200 bg-white py-2 text-sm shadow-xl">
-            <button
-              type="button"
-              className="flex w-full items-center px-4 py-2 text-left text-slate-700 hover:bg-slate-50"
-              onClick={goToSettings}
-            >
-              Account settings
-            </button>
-            <button
-              type="button"
-              className="flex w-full items-center px-4 py-2 text-left text-rose-600 hover:bg-rose-50"
-              onClick={signOut}
-            >
-              Sign out
-            </button>
-          </div>
+      <div className="flex items-center gap-3">
+        {isDemo ? (
+          <Link
+            href="/auth/sign-up"
+            className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:border-slate-300 hover:-translate-y-0.5"
+          >
+            Sign Up
+          </Link>
         ) : null}
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-left text-xs text-slate-500 transition hover:border-slate-200 hover:cursor-pointer"
+            onClick={() => {
+              if (showMenu) setMenuOpen((open) => !open);
+            }}
+            disabled={!showMenu}
+          >
+            <span className="block">Logged in as</span>
+            <span className="text-sm font-semibold text-slate-900">
+              {profileName}
+            </span>
+          </button>
+          {menuOpen ? (
+            <div className="absolute right-0 z-20 mt-2 w-44 rounded-2xl border border-slate-200 bg-white py-2 text-sm shadow-xl">
+              <button
+                type="button"
+                className="flex w-full items-center px-4 py-2 text-left text-slate-700 hover:bg-slate-50"
+                onClick={goToSettings}
+              >
+                Account settings
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center px-4 py-2 text-left text-rose-600 hover:bg-rose-50"
+                onClick={signOut}
+              >
+                Sign out
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
     </header>
   );

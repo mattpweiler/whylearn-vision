@@ -32,6 +32,28 @@ export const SupabaseProvider = ({
 
   useEffect(() => {
     let subscribed = true;
+
+    const ensureUserExists = async () => {
+      try {
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (!subscribed) return;
+        if (userError || !userData?.user) {
+          throw userError ?? new Error("Missing user");
+        }
+      } catch {
+        await supabase.auth.signOut();
+        if (!subscribed) return;
+        setSession(null);
+      }
+    };
+
+    const setSessionWithValidation = (nextSession: Session | null) => {
+      if (!subscribed) return;
+      setSession(nextSession);
+      if (!nextSession) return;
+      void ensureUserExists();
+    };
+
     const hydrate = async () => {
       const { data, error } = await supabase.auth.getSession();
       if (!subscribed) return;
@@ -39,7 +61,7 @@ export const SupabaseProvider = ({
         await supabase.auth.signOut();
         setSession(null);
       } else {
-        setSession(data.session ?? null);
+        setSessionWithValidation(data.session ?? null);
       }
       setIsLoading(false);
     };
@@ -47,8 +69,7 @@ export const SupabaseProvider = ({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (!subscribed) return;
-      setSession(nextSession);
+      setSessionWithValidation(nextSession);
     });
     return () => {
       subscribed = false;
