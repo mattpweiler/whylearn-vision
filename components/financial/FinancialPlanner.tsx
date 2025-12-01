@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import {
   Line,
   LineChart,
@@ -322,6 +322,13 @@ const MonthlyStatementsSection = ({
   statements,
   onChange,
 }: MonthlyStatementsSectionProps) => {
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    statements.forEach((statement) => {
+      initial[statement.id] = statement.notes ?? "";
+    });
+    return initial;
+  });
   const [visibleSeries, setVisibleSeries] = useState<{
     income: boolean;
     expenses: boolean;
@@ -355,6 +362,25 @@ const MonthlyStatementsSection = ({
 
   const removeStatement = (id: string) => {
     onChange(statements.filter((statement) => statement.id !== id));
+  };
+
+  useEffect(() => {
+    setNoteDrafts((prev) => {
+      const next: Record<string, string> = {};
+      statements.forEach((statement) => {
+        next[statement.id] =
+          prev[statement.id] ?? statement.notes ?? "";
+      });
+      return next;
+    });
+  }, [statements]);
+
+  const handleNoteBlur = (id: string) => {
+    const draft = noteDrafts[id] ?? "";
+    const current =
+      statements.find((statement) => statement.id === id)?.notes ?? "";
+    if (draft === current) return;
+    handleFieldChange(id, { notes: draft });
   };
 
   const addStatement = () => {
@@ -494,6 +520,7 @@ const MonthlyStatementsSection = ({
         <div className="space-y-4">
           {sorted.map((statement) => {
             const netProfit = (statement.income ?? 0) - (statement.expenses ?? 0);
+            const noteDraft = noteDrafts[statement.id] ?? "";
             return (
               <div
                 key={statement.id}
@@ -553,12 +580,14 @@ const MonthlyStatementsSection = ({
                     <textarea
                       rows={3}
                       className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      value={statement.notes ?? ""}
+                      value={noteDraft}
                       onChange={(event) =>
-                        handleFieldChange(statement.id, {
-                          notes: event.target.value,
-                        })
+                        setNoteDrafts((prev) => ({
+                          ...prev,
+                          [statement.id]: event.target.value,
+                        }))
                       }
+                      onBlur={() => handleNoteBlur(statement.id)}
                       placeholder="Break down key expenses, assumptions, or one-off items for this month."
                     />
                   </label>

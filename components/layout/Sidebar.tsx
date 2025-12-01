@@ -15,7 +15,6 @@ const navItems: {
   { key: "month", label: "This Month", icon: "🗓️" },
   { key: "year", label: "Year Goals Progress", icon: "🏔️" },
   { key: "backlog", label: "Backlog Tasks", icon: "🗂️" },
-  { key: "direction", label: "Find Direction", icon: "🧭" },
   {
     key: "financial_freedom",
     label: "Financial Freedom",
@@ -29,8 +28,9 @@ const navItems: {
   {
     key: "next_steps",
     label: "What are My Next Steps?",
-    icon: "🤖",
+    icon: "🤔",
   },
+  { key: "direction", label: "Reflections", icon: "🧭" },
   { key: "settings", label: "Settings", icon: "⚙️" },
 ];
 

@@ -121,21 +121,6 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
                 }
               />
             </label>
-            <label className="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3">
-              <div>
-                <p className="font-medium text-slate-900">
-                  Auto-generate tasks from AI
-                </p>
-                <p className="text-xs text-slate-500">Future feature placeholder.</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={state.settings.autoGenerateTasksFromAi}
-                onChange={(e) =>
-                  updateSettings({ autoGenerateTasksFromAi: e.target.checked })
-                }
-              />
-            </label>
           </div>
         </section>
       </div>

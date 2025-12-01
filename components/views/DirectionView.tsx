@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AiMessage, AppState } from "@/lib/types";
+import { AppState } from "@/lib/types";
 import { formatDisplayDate, generateId, todayKey } from "@/lib/utils";
 
 interface ViewProps {
@@ -31,10 +31,22 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
     return defaults;
   });
   const [reflectionType, setReflectionType] = useState("weekly");
-  const [reflectionContent, setReflectionContent] = useState("");
-  const [mood, setMood] = useState(5);
-  const [energy, setEnergy] = useState(5);
-  const [aiMessage, setAiMessage] = useState("");
+  const [reflectionNote, setReflectionNote] = useState("");
+  const [reflectionDate, setReflectionDate] = useState(todayKey());
+  const [dayQuality, setDayQuality] = useState(5);
+  const [expandedReflectionIds, setExpandedReflectionIds] = useState<string[]>([]);
+  const [editingReflectionId, setEditingReflectionId] = useState<string | null>(
+    null
+  );
+  const [editingReflectionDraft, setEditingReflectionDraft] = useState<{
+    note: string;
+    date: string;
+    dayQuality: number;
+  }>({
+    note: "",
+    date: todayKey(),
+    dayQuality: 5,
+  });
 
   const logScoreChange = (areaId: number, value: number) => {
     updateState((prev) => ({
@@ -55,8 +67,55 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     .slice(0, 5);
 
+  const toggleReflectionExpansion = (id: string) => {
+    setExpandedReflectionIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const startReflectionEdit = (reflectionId: string) => {
+    const target = state.reflections.find((item) => item.id === reflectionId);
+    if (!target) return;
+    const content = target.content ?? {};
+    setEditingReflectionId(reflectionId);
+    setEditingReflectionDraft({
+      note: content.note ?? "",
+      date: content.date ?? target.createdAt.slice(0, 10),
+      dayQuality: content.dayQuality ?? target.moodScore ?? 5,
+    });
+    if (!expandedReflectionIds.includes(reflectionId)) {
+      setExpandedReflectionIds((prev) => [...prev, reflectionId]);
+    }
+  };
+
+  const cancelReflectionEdit = () => {
+    setEditingReflectionId(null);
+  };
+
+  const saveReflectionEdit = () => {
+    if (!editingReflectionId) return;
+    updateState((prev) => ({
+      ...prev,
+      reflections: prev.reflections.map((reflection) =>
+        reflection.id === editingReflectionId
+          ? {
+              ...reflection,
+              content: {
+                ...(reflection.content ?? {}),
+                note: editingReflectionDraft.note,
+                date: editingReflectionDraft.date,
+                dayQuality: editingReflectionDraft.dayQuality,
+              },
+              moodScore: editingReflectionDraft.dayQuality,
+            }
+          : reflection
+      ),
+    }));
+    setEditingReflectionId(null);
+  };
+
   const addReflection = () => {
-    if (!reflectionContent.trim()) return;
+    if (!reflectionNote.trim()) return;
     updateState((prev) => ({
       ...prev,
       reflections: [
@@ -65,67 +124,18 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
           id: generateId(),
           type: reflectionType as "weekly" | "crisis",
           content: {
-            note: reflectionContent.trim(),
-            date: todayKey(),
+            note: reflectionNote.trim(),
+            date: reflectionDate,
+            dayQuality,
           },
-          moodScore: mood,
-          energyScore: energy,
+          moodScore: dayQuality,
           createdAt: new Date().toISOString(),
         },
       ],
     }));
-    setReflectionContent("");
-  };
-
-  const session = state.aiSessions[0];
-  const messages: AiMessage[] = session?.messages ?? [];
-
-
-  const fakeResponse = (input: string) =>
-    `Thanks for sharing. Choose one tiny action linked to that: “${input.slice(
-      0,
-      60
-    )}${input.length > 60 ? "…" : ""}” and drop it into your Week view.`;
-
-  const sendAiMessage = () => {
-    if (!aiMessage.trim()) return;
-    const now = new Date().toISOString();
-    const userMessage: AiMessage = {
-      id: generateId(),
-      role: "user",
-      content: aiMessage.trim(),
-      createdAt: now,
-    };
-    const assistantMessage: AiMessage = {
-      id: generateId(),
-      role: "assistant",
-      content: fakeResponse(aiMessage.trim()),
-      createdAt: now,
-    };
-    updateState((prev) => {
-      let sessions = [...prev.aiSessions];
-      if (!session) {
-        sessions = [
-          {
-            id: generateId(),
-            topic: "Mentor Chat",
-            messages: [],
-            createdAt: now,
-            updatedAt: now,
-          },
-          ...sessions,
-        ];
-      }
-      const target = sessions[0];
-      const updated = {
-        ...target,
-        messages: [...target.messages, userMessage, assistantMessage],
-        updatedAt: now,
-      };
-      sessions[0] = updated;
-      return { ...prev, aiSessions: sessions };
-    });
-    setAiMessage("");
+    setReflectionNote("");
+    setDayQuality(5);
+    setReflectionDate(todayKey());
   };
 
   return (
@@ -150,6 +160,7 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
                 max={10}
                 value={scoreDrafts[area.id] ?? 5}
                 className="mt-4 w-full"
+                style={{ cursor: "pointer" }}
                 onChange={(e) => {
                   const value = Number(e.target.value);
                   setScoreDrafts((prev) => ({
@@ -170,20 +181,130 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-lg font-semibold text-slate-900">Reflections</p>
           <div className="mt-4 space-y-3">
-            {recentReflections.map((reflection) => (
-              <div key={reflection.id} className="rounded-2xl border border-slate-100 p-4">
-                <p className="text-xs uppercase tracking-wide text-slate-500">
-                  {reflection.type}
-                </p>
-                <p className="text-sm text-slate-700">
-                  {reflection.content?.focus || reflection.content?.intent ||
-                    reflection.content?.note || "Captured"}
-                </p>
-                <p className="text-xs text-slate-400">
-                  {formatDisplayDate(reflection.createdAt)}
-                </p>
-              </div>
-            ))}
+            {recentReflections.map((reflection) => {
+              const isExpanded = expandedReflectionIds.includes(reflection.id);
+              const isEditing = editingReflectionId === reflection.id;
+              const content = reflection.content ?? {};
+              const summary =
+                content.focus || content.intent || content.note || "Captured";
+              return (
+                <div
+                  key={reflection.id}
+                  className="rounded-2xl border border-slate-100 p-4"
+                >
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between text-left transition-colors hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleReflectionExpansion(reflection.id)}
+                  >
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">
+                        {reflection.type}
+                      </p>
+                      <p className="text-sm font-medium text-slate-700">
+                        {summary}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {formatDisplayDate(reflection.createdAt)}
+                      </p>
+                    </div>
+                    <span className="text-slate-400">
+                      {isExpanded ? "−" : "+"}
+                    </span>
+                  </button>
+                  {isExpanded ? (
+                    <div className="mt-3 space-y-3 border-t border-slate-100 pt-3 text-sm text-slate-700">
+                      {isEditing ? (
+                        <>
+                          <input
+                            type="date"
+                            className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                            value={editingReflectionDraft.date}
+                            onChange={(e) =>
+                              setEditingReflectionDraft((prev) => ({
+                                ...prev,
+                                date: e.target.value,
+                              }))
+                            }
+                          />
+                          <textarea
+                            className="min-h-[160px] w-full rounded-2xl border border-slate-200 p-3 text-sm"
+                            value={editingReflectionDraft.note}
+                            onChange={(e) =>
+                              setEditingReflectionDraft((prev) => ({
+                                ...prev,
+                                note: e.target.value,
+                              }))
+                            }
+                            placeholder="What’s on your mind?"
+                          />
+                          <label className="block text-xs font-medium text-slate-500">
+                            Day rating {editingReflectionDraft.dayQuality}/10
+                            <input
+                              type="range"
+                              min={1}
+                              max={10}
+                              value={editingReflectionDraft.dayQuality}
+                              onChange={(e) =>
+                                setEditingReflectionDraft((prev) => ({
+                                  ...prev,
+                                  dayQuality: Number(e.target.value),
+                                }))
+                              }
+                              className="mt-2 w-full"
+                            />
+                          </label>
+                          <div className="flex gap-2 text-xs">
+                            <button
+                              type="button"
+                              className="flex-1 rounded-2xl bg-slate-900 px-3 py-2 font-semibold text-white transition hover:bg-slate-800"
+                              style={{ cursor: "pointer" }}
+                              onClick={saveReflectionEdit}
+                            >
+                              Save changes
+                            </button>
+                            <button
+                              type="button"
+                              className="flex-1 rounded-2xl border border-slate-200 px-3 py-2 font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-800"
+                              style={{ cursor: "pointer" }}
+                              onClick={cancelReflectionEdit}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p>
+                            <span className="font-medium text-slate-900">
+                              Date:
+                            </span>{" "}
+                            {formatDisplayDate(content.date ?? reflection.createdAt)}
+                          </p>
+                          {content.dayQuality ?? reflection.moodScore ? (
+                            <p>
+                              <span className="font-medium text-slate-900">
+                                Day score:
+                              </span>{" "}
+                              {content.dayQuality ?? reflection.moodScore}/10
+                            </p>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="text-xs font-semibold text-slate-900 underline transition hover:text-slate-700"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => startReflectionEdit(reflection.id)}
+                          >
+                            Edit
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
             {recentReflections.length === 0 && (
               <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
                 No reflections yet.
@@ -198,86 +319,45 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
               className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
               value={reflectionType}
               onChange={(e) => setReflectionType(e.target.value)}
+              style={{ cursor: "pointer" }}
             >
               <option value="weekly">Weekly</option>
               <option value="crisis">Crisis</option>
             </select>
+            <input
+              type="date"
+              className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+              value={reflectionDate}
+              onChange={(e) => setReflectionDate(e.target.value)}
+              style={{ cursor: "pointer" }}
+            />
             <textarea
               className="h-32 w-full rounded-2xl border border-slate-200 p-3 text-sm"
-              placeholder="What’s alive for you right now?"
-              value={reflectionContent}
-              onChange={(e) => setReflectionContent(e.target.value)}
+              placeholder="What's on your mind"
+              value={reflectionNote}
+              onChange={(e) => setReflectionNote(e.target.value)}
+              style={{ cursor: "pointer" }}
             />
-            <div className="flex gap-4 text-xs text-slate-600">
-              <label className="flex-1">
-                Mood {mood}/10
-                <input
-                  type="range"
-                  min={1}
-                  max={10}
-                  value={mood}
-                  onChange={(e) => setMood(Number(e.target.value))}
-                  className="mt-2 w-full"
-                />
-              </label>
-              <label className="flex-1">
-                Energy {energy}/10
-                <input
-                  type="range"
-                  min={1}
-                  max={10}
-                  value={energy}
-                  onChange={(e) => setEnergy(Number(e.target.value))}
-                  className="mt-2 w-full"
-                />
-              </label>
-            </div>
+            <label className="block text-sm font-medium text-slate-600">
+              Did you have a good day today? {dayQuality}/10
+              <input
+                type="range"
+                min={1}
+                max={10}
+                value={dayQuality}
+                onChange={(e) => setDayQuality(Number(e.target.value))}
+                className="mt-2 w-full"
+                style={{ cursor: "pointer" }}
+              />
+            </label>
             <button
               className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
+              style={{ cursor: "pointer" }}
               onClick={addReflection}
             >
               Save reflection
             </button>
           </div>
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-lg font-semibold text-slate-900">AI mentor (demo)</p>
-        <div className="mt-4 max-h-72 space-y-3 overflow-auto">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`rounded-2xl p-3 text-sm ${
-                msg.role === "assistant" ? "bg-slate-100" : "bg-indigo-50"
-              }`}
-            >
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                {msg.role === "assistant" ? "Mentor" : "You"}
-              </p>
-              <p className="text-slate-700">{msg.content}</p>
-            </div>
-          ))}
-          {messages.length === 0 && (
-            <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-              Start the conversation and we’ll fake an AI reply for now.
-            </p>
-          )}
-        </div>
-        <div className="mt-4 flex gap-3">
-          <input
-            className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm"
-            placeholder="Ask your mentor anything…"
-            value={aiMessage}
-            onChange={(e) => setAiMessage(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendAiMessage()}
-          />
-          <button
-            className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white"
-            onClick={sendAiMessage}
-          >
-            Send
-          </button>
         </div>
       </section>
     </div>
