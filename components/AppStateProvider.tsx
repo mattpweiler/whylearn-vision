@@ -124,8 +124,9 @@ const sampleTasks = () => {
 
 const createBaseState = (): AppState => ({
   profile: {
-    displayName: "Friend",
+    displayName: "Demo",
     timezone: currentTimezone(),
+    onboardingCompletedAt: new Date().toISOString(),
   },
   settings: defaultSettings(),
   lifeAreas: baseLifeAreas,
@@ -143,6 +144,7 @@ const createEmptyState = (): AppState => ({
   profile: {
     displayName: "",
     timezone: currentTimezone(),
+    onboardingCompletedAt: undefined,
   },
   settings: defaultSettings(),
   lifeAreas: [],

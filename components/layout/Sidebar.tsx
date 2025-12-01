@@ -5,14 +5,19 @@ import { ViewKey } from "@/lib/types";
 import { useSupabase } from "@/components/providers/SupabaseProvider";
 import { useRouter } from "next/navigation";
 
-const navItems: { key: ViewKey; label: string; icon: string }[] = [
+const navItems: {
+  key: ViewKey;
+  label: string;
+  icon: string;
+  feature?: "goals" | "backlog" | "direction" | "financial";
+}[] = [
   { key: "today", label: "Today", icon: "☀️" },
   { key: "week", label: "This Week", icon: "📅" },
   { key: "month", label: "This Month", icon: "🗓️" },
-  { key: "year", label: "Year Goals Progress", icon: "🏔️" },
-  { key: "backlog", label: "Backlog Tasks", icon: "🗂️" },
-  { key: "direction", label: "Find Direction", icon: "🧭" },
-  { key: "financial", label: "My Financials", icon: "💸" },
+  { key: "year", label: "Year Goals Progress", icon: "🏔️", feature: "goals" },
+  { key: "backlog", label: "Backlog Tasks", icon: "🗂️", feature: "backlog" },
+  { key: "direction", label: "Find Direction", icon: "🧭", feature: "direction" },
+  { key: "financial", label: "My Financials", icon: "💸", feature: "financial" },
   { key: "settings", label: "Settings", icon: "⚙️" },
 ];
 
@@ -37,6 +42,11 @@ export const Sidebar = ({
     }
   };
 
+  const isDemo = !session;
+
+  const featureDisabled = (feature?: string) =>
+    Boolean(feature && isDemo);
+
   return (
     <aside className="hidden w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex">
       <div className="px-2">
@@ -48,16 +58,23 @@ export const Sidebar = ({
       <nav className="mt-8 space-y-1">
         {navItems.map((item) => {
           const active = item.key === current;
+          const disabled = featureDisabled(item.feature);
           return (
             <button
               key={item.key}
               className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition-colors duration-200 ${
-                active
-                  ? "bg-slate-900 text-white hover:bg-slate-900/80"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                disabled
+                  ? "cursor-not-allowed text-slate-300"
+                  : active
+                    ? "bg-slate-900 text-white hover:bg-slate-900/80"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
-              onClick={() => onSelect(item.key)}
+              onClick={() => {
+                if (disabled) return;
+                onSelect(item.key);
+              }}
               type="button"
+              disabled={disabled}
             >
               <span className="text-lg">{item.icon}</span>
               <span>{item.label}</span>

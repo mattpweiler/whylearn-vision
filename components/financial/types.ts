@@ -28,6 +28,14 @@ export interface LiabilityItem {
   amount: number;
 }
 
+export interface MonthlyStatement {
+  id: string;
+  month: string; // YYYY-MM
+  income: number;
+  expenses: number;
+  notes?: string;
+}
+
 export type FinancialItem =
   | IncomeItem
   | ExpenseItem
@@ -39,6 +47,7 @@ export const EXPENSE_STORAGE_KEY = "whylearn_expenses";
 export const ASSET_STORAGE_KEY = "whylearn_assets";
 export const LIABILITY_STORAGE_KEY = "whylearn_liabilities";
 export const SETTINGS_STORAGE_KEY = "whylearn_financial_settings";
+export const STATEMENTS_STORAGE_KEY = "whylearn_financial_statements";
 
 export const DEFAULT_FINANCIAL_SETTINGS: FinancialSettings = {
   annualReturnRate: 5,

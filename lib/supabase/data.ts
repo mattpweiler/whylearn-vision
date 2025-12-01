@@ -140,7 +140,7 @@ export const fetchSupabaseAppState = async (
   const state: AppState = {
     profile: {
       displayName:
-        (profile?.display_name as string | null) ?? "Friend",
+        (profile?.display_name as string | null) ?? "Demo",
       timezone:
         (profile?.timezone as string | null) ?? currentTimezone(),
       onboardingCompletedAt: profile?.onboarding_completed_at
