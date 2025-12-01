@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_MODEL = "gpt-4o-mini";
 
-const createSupabaseServerClient = (request: NextRequest) =>
+const createSupabaseServerClient = (request: any) =>
   createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
@@ -30,7 +30,7 @@ const buildContextSummary = (payload: {
   habits: Record<string, unknown>[];
   lifeAreas: Record<string, unknown>[];
   lifeAreaScores: Record<string, unknown>[];
-  reflections: Record<string, unknown>[];
+  reflections: { type: string; content: { note?: string; focus?: string; intent?: string; [key: string]: unknown } }[];
 }) => {
   const lines: string[] = [];
   if (payload.profile) {
@@ -84,9 +84,9 @@ const buildContextSummary = (payload: {
       "Recent reflections:",
       ...payload.reflections.map((reflection) => {
         const summary =
-          reflection.content?.note ??
-          reflection.content?.focus ??
-          reflection.content?.intent ??
+          (reflection.content as { note?: string; focus?: string; intent?: string })?.note ??
+          (reflection.content as { note?: string; focus?: string; intent?: string })?.focus ??
+          (reflection.content as { note?: string; focus?: string; intent?: string })?.intent ??
           JSON.stringify(reflection.content);
         return `- ${reflection.type} : ${summary}`;
       })
@@ -95,7 +95,7 @@ const buildContextSummary = (payload: {
   return lines.join("\n");
 };
 
-export async function GET(request: NextRequest) {
+export async function GET(request: any) {
   const supabase = createSupabaseServerClient(request);
   const {
     data: { session },
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
   });
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: any) {
   const body = await request.json().catch(() => null);
   if (!body?.question || typeof body.question !== "string") {
     return NextResponse.json(

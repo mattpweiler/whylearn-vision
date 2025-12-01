@@ -216,7 +216,7 @@ export const useFinancialRecords = (enabled: boolean): UseFinancialRecordsResult
           inflation_rate: next.inflationRate,
           projection_years: next.projectionYears,
         })
-        .catch((err) => console.error("Failed to sync financial settings", err));
+        .then(null, (err: unknown) => console.error("Failed to sync financial settings", err));
     },
     [enabled, supabase, userId]
   );

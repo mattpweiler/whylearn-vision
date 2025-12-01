@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import type { CookieOptions } from "next/dist/server/web/spec-extension/cookies";
 import { createServerClient } from "@supabase/ssr";
 
 const PROTECTED_PATHS = ["/app"];
@@ -20,10 +19,10 @@ const createMiddlewareClient = (request: NextRequest, response: NextResponse) =>
         get(name: string) {
           return request.cookies.get(name)?.value;
         },
-        set(name: string, value: string, options?: CookieOptions) {
+        set(name: string, value: string, options?: any) {
           response.cookies.set({ name, value, ...(options ?? {}) });
         },
-        remove(name: string, options?: CookieOptions) {
+        remove(name: string, options?: any) {
           response.cookies.set({
             name,
             value: "",

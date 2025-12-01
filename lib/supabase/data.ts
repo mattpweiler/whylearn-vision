@@ -204,7 +204,7 @@ export const fetchSupabaseAppState = async (
         }))
       : DEFAULT_LIFE_AREAS;
 
-  const state: AppState = {
+  const state: any = {
     profile: {
       displayName:
         (profile?.display_name as string | null) ?? "Demo",

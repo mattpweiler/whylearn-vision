@@ -73,7 +73,7 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
     const endOfYear = new Date(new Date().getFullYear(), 11, 31)
       .toISOString()
       .slice(0, 10);
-    const goal: Goal = {
+    const goal: any = {
       id: generateId(),
       title: form.title.trim(),
       description: form.description?.trim(),
