@@ -526,7 +526,7 @@ export const OnboardingFlow = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6 py-12">
-      <div className="w-full max-w-4xl rounded-3xl bg-white p-10 shadow-xl">
+      <div className="max-w-4xl rounded-3xl bg-white p-10 shadow-xl">
         {renderStep()}
       </div>
     </div>

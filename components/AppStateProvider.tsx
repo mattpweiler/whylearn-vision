@@ -5,8 +5,10 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { AppState, LifeArea } from "@/lib/types";
 import {
   STORAGE_KEY,
@@ -15,12 +17,15 @@ import {
   generateId,
   monthLabel,
 } from "@/lib/utils";
+import { fetchSupabaseAppState } from "@/lib/supabase/data";
+import { persistWorkspaceChanges } from "@/lib/supabase/persistence";
 
 interface AppStateContextValue {
   state: AppState;
   updateState: (updater: (prev: AppState) => AppState) => void;
   resetState: () => void;
   isHydrated: boolean;
+  error?: string | null;
 }
 
 const baseLifeAreas: LifeArea[] = [
@@ -134,20 +139,48 @@ const createBaseState = (): AppState => ({
   dailyFocus: {},
 });
 
+const createEmptyState = (): AppState => ({
+  profile: {
+    displayName: "",
+    timezone: currentTimezone(),
+  },
+  settings: defaultSettings(),
+  lifeAreas: [],
+  lifeAreaScores: [],
+  goals: [],
+  habits: [],
+  habitLogs: [],
+  tasks: [],
+  reflections: [],
+  aiSessions: [],
+  dailyFocus: {},
+});
+
 const AppStateContext = createContext<AppStateContextValue | undefined>(
   undefined
 );
 
 export const AppStateProvider = ({
   children,
+  mode = "demo",
+  supabaseClient,
+  userId,
 }: {
   children: React.ReactNode;
+  mode?: "demo" | "supabase";
+  supabaseClient?: SupabaseClient;
+  userId?: string;
 }) => {
-  const [state, setState] = useState<AppState>(createBaseState);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [state, setState] = useState<AppState>(() =>
+    mode === "demo" ? createBaseState() : createEmptyState()
+  );
+  const [isHydrated, setIsHydrated] = useState(mode === "demo" ? false : false);
+  const [error, setError] = useState<string | null>(null);
+  const profileBootstrapRef = useRef(false);
+  const settingsBootstrapRef = useRef(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (mode !== "demo" || typeof window === "undefined") return;
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);
       if (stored) {
@@ -160,31 +193,103 @@ export const AppStateProvider = ({
       }
     } catch (err) {
       console.error("Failed to load saved state", err);
+      setState(createBaseState());
     } finally {
       setIsHydrated(true);
     }
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
-    if (!isHydrated || typeof window === "undefined") return;
+    if (mode !== "demo" || typeof window === "undefined" || !isHydrated) return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state, isHydrated]);
+  }, [state, isHydrated, mode]);
 
-  const updateState = useCallback((updater: (prev: AppState) => AppState) => {
-    setState((prev) => updater(prev));
-  }, []);
+  const loadSupabaseState = useCallback(async () => {
+    if (!supabaseClient || !userId) return;
+    setError(null);
+    try {
+      const result = await fetchSupabaseAppState(supabaseClient, userId);
+      setState(result.state);
+      profileBootstrapRef.current = !result.profileExists;
+      settingsBootstrapRef.current = !result.settingsExists;
+    } catch (err) {
+      console.error("Failed to load Supabase state", err);
+      const message =
+        err instanceof Error ? err.message : "Unable to load workspace data.";
+      setError(message);
+    } finally {
+      setIsHydrated(true);
+    }
+  }, [supabaseClient, userId]);
+
+  useEffect(() => {
+    if (mode !== "supabase") return;
+    if (!supabaseClient || !userId) return;
+    setIsHydrated(false);
+    loadSupabaseState();
+  }, [mode, supabaseClient, userId, loadSupabaseState]);
+
+  const persistStateChanges = useCallback(
+    (previous: AppState, nextState: AppState) => {
+      if (
+        mode !== "supabase" ||
+        !supabaseClient ||
+        !userId
+      ) {
+        return;
+      }
+      persistWorkspaceChanges({
+        supabase: supabaseClient,
+        userId,
+        previous,
+        next: nextState,
+        forceProfileUpsert: profileBootstrapRef.current,
+        forceSettingsUpsert: settingsBootstrapRef.current,
+      })
+        .then(({ profileSynced, settingsSynced }) => {
+          if (profileSynced) {
+            profileBootstrapRef.current = false;
+          }
+          if (settingsSynced) {
+            settingsBootstrapRef.current = false;
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to persist workspace changes", err);
+        });
+    },
+    [mode, supabaseClient, userId]
+  );
+
+  const updateState = useCallback(
+    (updater: (prev: AppState) => AppState) => {
+      setState((prev) => {
+        const nextState = updater(prev);
+        persistStateChanges(prev, nextState);
+        return nextState;
+      });
+    },
+    [persistStateChanges]
+  );
 
   const resetState = useCallback(() => {
-    const base = createBaseState();
-    setState(base);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(base));
+    if (mode === "demo") {
+      const base = createBaseState();
+      setState(base);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(base));
+      }
+      setIsHydrated(true);
+      return;
     }
-  }, []);
+    if (!supabaseClient || !userId) return;
+    setIsHydrated(false);
+    loadSupabaseState();
+  }, [mode, loadSupabaseState, supabaseClient, userId]);
 
   return (
     <AppStateContext.Provider
-      value={{ state, updateState, resetState, isHydrated }}
+      value={{ state, updateState, resetState, isHydrated, error }}
     >
       {children}
     </AppStateContext.Provider>

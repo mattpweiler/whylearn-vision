@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { ViewKey } from "@/lib/types";
+import { useSupabase } from "@/components/providers/SupabaseProvider";
+import { useRouter } from "next/navigation";
 
 const navItems: { key: ViewKey; label: string; icon: string }[] = [
   { key: "today", label: "Today", icon: "☀️" },
@@ -20,11 +23,27 @@ export const Sidebar = ({
   current: ViewKey;
   onSelect: (next: ViewKey) => void;
 }) => {
+  const { session, supabase } = useSupabase();
+  const router = useRouter();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const signOut = async () => {
+    try {
+      setIsSigningOut(true);
+      await supabase.auth.signOut();
+      router.replace("/");
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
   return (
     <aside className="hidden w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex">
       <div className="px-2">
         <p className="text-lg font-semibold text-slate-900">WhyLearn Vision</p>
-        <p className="text-sm text-slate-500">Vision demo</p>
+        <p className="text-sm text-slate-500">
+          {session ? "Your workspace" : "Vision demo"}
+        </p>
       </div>
       <nav className="mt-8 space-y-1">
         {navItems.map((item) => {
@@ -46,9 +65,20 @@ export const Sidebar = ({
           );
         })}
       </nav>
-      <div className="mt-auto rounded-2xl bg-slate-900/5 p-4 text-sm text-slate-600">
-        You’re building momentum. Keep checking in daily.
-      </div>
+      {session ? (
+        <button
+          type="button"
+          className="mt-auto rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-red-200 hover:text-red-600 disabled:opacity-70"
+          onClick={signOut}
+          disabled={isSigningOut}
+        >
+          {isSigningOut ? "Signing out…" : "Sign out"}
+        </button>
+      ) : (
+        <div className="mt-auto rounded-2xl bg-slate-900/5 p-4 text-sm text-slate-600">
+          You’re building momentum. Keep checking in daily.
+        </div>
+      )}
     </aside>
   );
 };
