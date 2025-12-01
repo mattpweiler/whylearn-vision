@@ -225,11 +225,7 @@ export const AppStateProvider = ({
 
   const persistStateChanges = useCallback(
     (previous: AppState, nextState: AppState) => {
-      if (
-        mode !== "supabase" ||
-        !supabaseClient ||
-        !userId
-      ) {
+      if (mode !== "supabase" || !supabaseClient || !userId) {
         return;
       }
       persistWorkspaceChanges({
@@ -255,16 +251,39 @@ export const AppStateProvider = ({
     [mode, supabaseClient, userId]
   );
 
-  const updateState = useCallback(
-    (updater: (prev: AppState) => AppState) => {
-      setState((prev) => {
-        const nextState = updater(prev);
-        persistStateChanges(prev, nextState);
-        return nextState;
-      });
-    },
-    [persistStateChanges]
-  );
+  const previousStateRef = useRef<AppState | null>(null);
+  const hasPersistedSinceHydrationRef = useRef(false);
+
+  const updateState = useCallback((updater: (prev: AppState) => AppState) => {
+    setState((prev) => updater(prev));
+  }, []);
+
+  useEffect(() => {
+    if (mode !== "supabase" || !supabaseClient || !userId || !isHydrated) {
+      previousStateRef.current = state;
+      hasPersistedSinceHydrationRef.current = false;
+      return;
+    }
+    const previous = previousStateRef.current;
+    if (
+      !previous ||
+      !hasPersistedSinceHydrationRef.current ||
+      previous === state
+    ) {
+      previousStateRef.current = state;
+      hasPersistedSinceHydrationRef.current = true;
+      return;
+    }
+    persistStateChanges(previous, state);
+    previousStateRef.current = state;
+  }, [
+    state,
+    mode,
+    supabaseClient,
+    userId,
+    isHydrated,
+    persistStateChanges,
+  ]);
 
   const resetState = useCallback(() => {
     if (mode === "demo") {
