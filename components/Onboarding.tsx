@@ -7,6 +7,10 @@ import { generateId, todayKey } from "@/lib/utils";
 
 const questions = [
   {
+    key: "displayName",
+    label: "What should we call you? (Display name)",
+  },
+  {
     key: "betterFuture",
     label:
       "If your life felt clearly better 12 months from now, what changed?",
@@ -110,7 +114,12 @@ export const OnboardingFlow = () => {
 
     updateState((prev) => ({
       ...prev,
-      profile: { ...prev.profile, onboardingCompletedAt: now },
+      profile: {
+        ...prev.profile,
+        onboardingCompletedAt: now,
+        displayName:
+          answers.displayName?.trim() || prev.profile.displayName || "Friend",
+      },
       lifeAreaScores: [
         ...prev.lifeAreaScores,
         ...lifeAreas.map((area) => ({
@@ -526,7 +535,7 @@ export const OnboardingFlow = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6 py-12">
-      <div className="max-w-4xl rounded-3xl bg-white p-10 shadow-xl">
+      <div className="onboarding-form max-w-4xl rounded-3xl bg-white p-10 shadow-xl">
         {renderStep()}
       </div>
     </div>

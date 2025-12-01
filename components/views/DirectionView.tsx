@@ -36,7 +36,7 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
   const [energy, setEnergy] = useState(5);
   const [aiMessage, setAiMessage] = useState("");
 
-  const updateScore = (areaId: number) => {
+  const logScoreChange = (areaId: number, value: number) => {
     updateState((prev) => ({
       ...prev,
       lifeAreaScores: [
@@ -44,7 +44,7 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
         {
           id: generateId(),
           lifeAreaId: areaId,
-          score: scoreDrafts[areaId] ?? 5,
+          score: value,
           createdAt: new Date().toISOString(),
         },
       ],
@@ -150,19 +150,15 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
                 max={10}
                 value={scoreDrafts[area.id] ?? 5}
                 className="mt-4 w-full"
-                onChange={(e) =>
+                onChange={(e) => {
+                  const value = Number(e.target.value);
                   setScoreDrafts((prev) => ({
                     ...prev,
-                    [area.id]: Number(e.target.value),
-                  }))
-                }
+                    [area.id]: value,
+                  }));
+                  logScoreChange(area.id, value);
+                }}
               />
-              <button
-                className="mt-3 w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"
-                onClick={() => updateScore(area.id)}
-              >
-                Update score
-              </button>
             </div>
           ))}
         </div>

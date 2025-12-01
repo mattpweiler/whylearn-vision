@@ -33,16 +33,21 @@ export const SupabaseProvider = ({
   useEffect(() => {
     let subscribed = true;
     const hydrate = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (subscribed) {
+      const { data, error } = await supabase.auth.getSession();
+      if (!subscribed) return;
+      if (error) {
+        await supabase.auth.signOut();
+        setSession(null);
+      } else {
         setSession(data.session ?? null);
-        setIsLoading(false);
       }
+      setIsLoading(false);
     };
     hydrate();
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!subscribed) return;
       setSession(nextSession);
     });
     return () => {

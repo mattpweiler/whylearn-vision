@@ -1,18 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppState } from "@/components/AppStateProvider";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { PageHeader } from "@/components/layout/Header";
 import { DirectionView } from "@/components/views/DirectionView";
-import { FinancialPlannerView } from "@/components/views/FinancialPlannerView";
+import { FinancialFreedomView } from "@/components/views/FinancialFreedomView";
 import { MonthView } from "@/components/views/MonthView";
 import { SettingsView } from "@/components/views/SettingsView";
 import { TodayView } from "@/components/views/TodayView";
 import { WeekView } from "@/components/views/WeekView";
 import { YearGoalsView } from "@/components/views/YearGoalsView";
 import { BacklogView } from "@/components/views/BacklogView";
+import { MonthlyProfitView } from "@/components/views/MonthlyProfitView";
+import { NextStepsView } from "@/components/views/NextStepsView";
 import { ViewKey } from "@/lib/types";
+import { useSupabase } from "@/components/providers/SupabaseProvider";
 
 const meta: Record<ViewKey, { title: string; subtitle: string }> = {
   today: {
@@ -39,9 +42,17 @@ const meta: Record<ViewKey, { title: string; subtitle: string }> = {
     title: "Direction & Purpose",
     subtitle: "Life areas, reflections, and AI mentor.",
   },
-  financial: {
+  next_steps: {
+    title: "What Are My Next Steps?",
+    subtitle: "Ask a question and capture AI-generated action items.",
+  },
+  financial_freedom: {
     title: "Financial Planner",
     subtitle: "Stay close to your cash flow and net worth trajectory.",
+  },
+  financial_profit: {
+    title: "Monthly Profit",
+    subtitle: "Log actual income vs. expenses and measure profit trends.",
   },
   settings: {
     title: "Settings",
@@ -53,18 +64,47 @@ const viewOrder: ViewKey[] = [
   "today",
   "week",
   "month",
+  "backlog",
   "year",
   "direction",
-  "financial",
-  "backlog",
+  "next_steps",
+  "financial_freedom",
+  "financial_profit",
   "settings",
 ];
 
+const DEMO_ALLOWED_VIEW_SET = new Set<ViewKey>([
+  "today",
+  "week",
+  "month",
+  "backlog",
+]);
+
 export const AppShell = () => {
   const { state, updateState } = useAppState();
+  const { session } = useSupabase();
+  const isDemo = !session;
+
+  const resolvedDefaultView = useMemo(() => {
+    const desired = state.settings.defaultHomeView ?? "today";
+    if (isDemo && !DEMO_ALLOWED_VIEW_SET.has(desired)) {
+      return "today";
+    }
+    return desired;
+  }, [state.settings.defaultHomeView, isDemo]);
+
   const [currentView, setCurrentView] = useState<ViewKey>(
-    state.settings.defaultHomeView ?? "today"
+    resolvedDefaultView
   );
+
+  useEffect(() => {
+    setCurrentView(resolvedDefaultView);
+  }, [resolvedDefaultView]);
+
+  const handleSelectView = (next: ViewKey) => {
+    if (isDemo && !DEMO_ALLOWED_VIEW_SET.has(next)) return;
+    setCurrentView(next);
+  };
 
   const todayLabel = useMemo(() => {
     const now = new Date();
@@ -87,10 +127,12 @@ export const AppShell = () => {
         return <YearGoalsView state={state} updateState={updateState} />;
       case "direction":
         return <DirectionView state={state} updateState={updateState} />;
-      case "financial":
-        return (
-          <FinancialPlannerView state={state} updateState={updateState} />
-        );
+      case "financial_freedom":
+        return <FinancialFreedomView />;
+      case "financial_profit":
+        return <MonthlyProfitView />;
+      case "next_steps":
+        return <NextStepsView />;
       case "backlog":
         return <BacklogView state={state} updateState={updateState} />;
       case "settings":
@@ -103,16 +145,20 @@ export const AppShell = () => {
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900">
-      <Sidebar current={currentView} onSelect={setCurrentView} />
+      <Sidebar current={currentView} onSelect={handleSelectView} />
       <main className="flex flex-1 flex-col gap-6 px-4 py-6 lg:px-10">
         <div className="lg:hidden">
           <select
             value={currentView}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
-            onChange={(e) => setCurrentView(e.target.value as ViewKey)}
+            onChange={(e) => handleSelectView(e.target.value as ViewKey)}
           >
             {viewOrder.map((item) => (
-              <option key={item} value={item}>
+              <option
+                key={item}
+                value={item}
+                disabled={isDemo && !DEMO_ALLOWED_VIEW_SET.has(item)}
+              >
                 {meta[item].title}
               </option>
             ))}

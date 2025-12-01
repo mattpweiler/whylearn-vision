@@ -9,17 +9,32 @@ const navItems: {
   key: ViewKey;
   label: string;
   icon: string;
-  feature?: "goals" | "backlog" | "direction" | "financial";
 }[] = [
   { key: "today", label: "Today", icon: "☀️" },
   { key: "week", label: "This Week", icon: "📅" },
   { key: "month", label: "This Month", icon: "🗓️" },
-  { key: "year", label: "Year Goals Progress", icon: "🏔️", feature: "goals" },
-  { key: "backlog", label: "Backlog Tasks", icon: "🗂️", feature: "backlog" },
-  { key: "direction", label: "Find Direction", icon: "🧭", feature: "direction" },
-  { key: "financial", label: "My Financials", icon: "💸", feature: "financial" },
+  { key: "year", label: "Year Goals Progress", icon: "🏔️" },
+  { key: "backlog", label: "Backlog Tasks", icon: "🗂️" },
+  { key: "direction", label: "Find Direction", icon: "🧭" },
+  {
+    key: "financial_freedom",
+    label: "Financial Freedom",
+    icon: "💸",
+  },
+  {
+    key: "financial_profit",
+    label: "Monthly Profit",
+    icon: "📈",
+  },
+  {
+    key: "next_steps",
+    label: "What are My Next Steps?",
+    icon: "🤖",
+  },
   { key: "settings", label: "Settings", icon: "⚙️" },
 ];
+
+const DEMO_ALLOWED_VIEWS: ViewKey[] = ["today", "week", "month", "backlog"];
 
 export const Sidebar = ({
   current,
@@ -44,8 +59,7 @@ export const Sidebar = ({
 
   const isDemo = !session;
 
-  const featureDisabled = (feature?: string) =>
-    Boolean(feature && isDemo);
+  console.log(session);
 
   return (
     <aside className="hidden w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex">
@@ -58,7 +72,7 @@ export const Sidebar = ({
       <nav className="mt-8 space-y-1">
         {navItems.map((item) => {
           const active = item.key === current;
-          const disabled = featureDisabled(item.feature);
+          const disabled = isDemo && !DEMO_ALLOWED_VIEWS.includes(item.key);
           return (
             <button
               key={item.key}

@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { AppState, LifeArea } from "@/lib/types";
+import { AppState } from "@/lib/types";
 import {
   STORAGE_KEY,
   currentTimezone,
@@ -19,6 +19,7 @@ import {
 } from "@/lib/utils";
 import { fetchSupabaseAppState } from "@/lib/supabase/data";
 import { persistWorkspaceChanges } from "@/lib/supabase/persistence";
+import { DEFAULT_LIFE_AREAS } from "@/lib/lifeAreas";
 
 interface AppStateContextValue {
   state: AppState;
@@ -27,15 +28,6 @@ interface AppStateContextValue {
   isHydrated: boolean;
   error?: string | null;
 }
-
-const baseLifeAreas: LifeArea[] = [
-  { id: 1, key: "career", name: "Career", sortOrder: 1 },
-  { id: 2, key: "money", name: "Money", sortOrder: 2 },
-  { id: 3, key: "health", name: "Health", sortOrder: 3 },
-  { id: 4, key: "relationships", name: "Relationships", sortOrder: 4 },
-  { id: 5, key: "mental", name: "Mental", sortOrder: 5 },
-  { id: 6, key: "purpose", name: "Purpose", sortOrder: 6 },
-];
 
 const sampleGoals = () => [
   {
@@ -129,7 +121,7 @@ const createBaseState = (): AppState => ({
     onboardingCompletedAt: new Date().toISOString(),
   },
   settings: defaultSettings(),
-  lifeAreas: baseLifeAreas,
+  lifeAreas: DEFAULT_LIFE_AREAS,
   lifeAreaScores: [],
   goals: sampleGoals(),
   habits: sampleHabits(),
@@ -147,7 +139,7 @@ const createEmptyState = (): AppState => ({
     onboardingCompletedAt: undefined,
   },
   settings: defaultSettings(),
-  lifeAreas: [],
+  lifeAreas: DEFAULT_LIFE_AREAS,
   lifeAreaScores: [],
   goals: [],
   habits: [],

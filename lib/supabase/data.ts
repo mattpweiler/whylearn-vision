@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { AppState, AiMessageRole } from "@/lib/types";
+import { AppState, AiMessageRole, ViewKey } from "@/lib/types";
+import { DEFAULT_LIFE_AREAS } from "@/lib/lifeAreas";
 import { currentTimezone, defaultSettings } from "@/lib/utils";
 
 type NullableRecord = Record<string, unknown> | null;
@@ -12,6 +13,51 @@ const parseWeekStart = (value?: number | null): 0 | 1 => {
 const toAiRole = (value?: string | null): AiMessageRole => {
   if (value === "assistant" || value === "user") return value;
   return "assistant";
+};
+
+const allowedHomeViews: ViewKey[] = [
+  "today",
+  "week",
+  "month",
+  "year",
+  "direction",
+  "financial_freedom",
+  "financial_profit",
+  "backlog",
+  "settings",
+];
+
+const normalizeHomeView = (
+  value: string | null | undefined,
+  fallback: ViewKey
+): ViewKey => {
+  if (!value) return fallback;
+  if (value === "financial") return "financial_freedom";
+  if (allowedHomeViews.includes(value as ViewKey)) {
+    return value as ViewKey;
+  }
+  return fallback;
+};
+
+const seedLifeAreasIfMissing = async (
+  supabase: SupabaseClient
+) => {
+  const payload = DEFAULT_LIFE_AREAS.map((area) => ({
+    key: area.key,
+    name: area.name,
+    description: area.description ?? null,
+    sort_order: area.sortOrder ?? 0,
+  }));
+  const upsertResult = await supabase
+    .from("life_areas")
+    .upsert(payload, { onConflict: "key" });
+  if (upsertResult.error) throw upsertResult.error;
+  const { data, error } = await supabase
+    .from("life_areas")
+    .select("id, key, name, description, sort_order")
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
 };
 
 export interface SupabaseAppStateResult {
@@ -137,6 +183,27 @@ export const fetchSupabaseAppState = async (
     return acc;
   }, {});
 
+  let lifeAreaRows = lifeAreasResult.data ?? [];
+  if (!lifeAreaRows || lifeAreaRows.length === 0) {
+    try {
+      lifeAreaRows = await seedLifeAreasIfMissing(supabase);
+    } catch (err) {
+      console.error("Failed to seed life areas", err);
+      lifeAreaRows = [];
+    }
+  }
+
+  const resolvedLifeAreas =
+    lifeAreaRows.length > 0
+      ? lifeAreaRows.map((item) => ({
+          id: item.id,
+          key: item.key,
+          name: item.name,
+          description: item.description ?? undefined,
+          sortOrder: item.sort_order ?? 0,
+        }))
+      : DEFAULT_LIFE_AREAS;
+
   const state: AppState = {
     profile: {
       displayName:
@@ -148,9 +215,11 @@ export const fetchSupabaseAppState = async (
         : undefined,
     },
     settings: {
-      defaultHomeView:
-        (settings?.default_home_view as AppState["settings"]["defaultHomeView"]) ??
-        defaults.defaultHomeView,
+      defaultHomeView: normalizeHomeView(
+        (settings?.default_home_view as string | null | undefined) ??
+          undefined,
+        defaults.defaultHomeView
+      ),
       weekStartDay: parseWeekStart(
         (settings?.week_start_day as number | null | undefined) ?? undefined
       ),
@@ -161,13 +230,7 @@ export const fetchSupabaseAppState = async (
         (settings?.auto_generate_tasks_from_ai as boolean | null) ??
         defaults.autoGenerateTasksFromAi,
     },
-    lifeAreas: (lifeAreasResult.data ?? []).map((item) => ({
-      id: item.id,
-      key: item.key,
-      name: item.name,
-      description: item.description ?? undefined,
-      sortOrder: item.sort_order ?? 0,
-    })),
+    lifeAreas: resolvedLifeAreas,
     lifeAreaScores: (scoresResult.data ?? []).map((item) => ({
       id: item.id,
       lifeAreaId: item.life_area_id,

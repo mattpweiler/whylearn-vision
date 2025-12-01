@@ -14,7 +14,11 @@ const viewOptions: { key: ViewKey; label: string }[] = [
   { key: "month", label: "This Month" },
   { key: "year", label: "Year Goals" },
   { key: "direction", label: "Direction" },
-  { key: "financial", label: "Financial Planner" },
+  { key: "financial_freedom", label: "Financial Freedom" },
+  { key: "financial_profit", label: "Monthly Profit" },
+  { key: "next_steps", label: "What are My Next Steps?" },
+  { key: "backlog", label: "Backlog" },
+  { key: "settings", label: "Settings" },
 ];
 
 export const SettingsView = ({ state, updateState }: ViewProps) => {

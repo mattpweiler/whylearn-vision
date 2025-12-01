@@ -126,7 +126,8 @@ export interface UserSettings {
     | "month"
     | "year"
     | "direction"
-    | "financial"
+    | "financial_freedom"
+    | "financial_profit"
     | "backlog";
   weekStartDay: 0 | 1;
   showLifeAreaSummaryOnToday: boolean;
@@ -159,6 +160,8 @@ export type ViewKey =
   | "month"
   | "year"
   | "direction"
-  | "financial"
+  | "financial_freedom"
+  | "financial_profit"
+  | "next_steps"
   | "backlog"
   | "settings";

@@ -50,14 +50,20 @@ const PageSection = ({ children }: { children: ReactNode }) => (
 
 interface FinancialPlannerProps {
   showIntro?: boolean;
+  initialMode?: "projections" | "statements";
+  enableModeToggle?: boolean;
 }
 
-export const FinancialPlanner = ({ showIntro = true }: FinancialPlannerProps) => {
+export const FinancialPlanner = ({
+  showIntro = true,
+  initialMode = "projections",
+  enableModeToggle = true,
+}: FinancialPlannerProps) => {
   const { session } = useSupabase();
   const isAuthenticated = Boolean(session);
   const remoteData = useFinancialRecords(isAuthenticated);
   const [activeTab, setActiveTab] = useState<"projections" | "statements">(
-    "projections"
+    initialMode
   );
 
   const [localIncomes, setLocalIncomes] = usePersistentState<IncomeItem[]>(
@@ -151,7 +157,7 @@ export const FinancialPlanner = ({ showIntro = true }: FinancialPlannerProps) =>
 
   return (
     <div className="space-y-6">
-      {showIntro && (
+      {showIntro ? (
         <header className="mb-2 space-y-2 text-center">
           <p className="text-sm uppercase tracking-wide text-emerald-500">
             WhyLearn Labs
@@ -164,34 +170,36 @@ export const FinancialPlanner = ({ showIntro = true }: FinancialPlannerProps) =>
             the compounding effect of your habits.
           </p>
         </header>
-      )}
+      ) : null}
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-        <div className="flex flex-wrap gap-2">
-          {[
-            { key: "projections", label: "Financial Freedom Projections" },
-            { key: "statements", label: "Monthly Profit Statements" },
-          ].map((tab) => {
-            const active = activeTab === (tab.key as typeof activeTab);
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActiveTab(tab.key as typeof activeTab)}
-                className={`flex-1 rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-                  active
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100 text-slate-500 hover:text-slate-900"
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
+      {enableModeToggle ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: "projections", label: "Financial Freedom Projections" },
+              { key: "statements", label: "Monthly Profit Statements" },
+            ].map((tab) => {
+              const active = activeTab === (tab.key as typeof activeTab);
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key as typeof activeTab)}
+                  className={`flex-1 rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+                    active
+                      ? "bg-slate-900 text-white"
+                      : "bg-slate-100 text-slate-500 hover:text-slate-900"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      ) : null}
 
-  {activeTab === "projections" ? (
+      {activeTab === "projections" ? (
         <>
           <PageSection>
             <FinancialSummaryCards

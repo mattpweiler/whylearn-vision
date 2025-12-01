@@ -104,7 +104,7 @@ export const AuthForm = ({ mode }: { mode: AuthMode }) => {
             type="email"
             autoComplete="email"
             required
-            className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+            className="auth-input mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
@@ -124,7 +124,7 @@ export const AuthForm = ({ mode }: { mode: AuthMode }) => {
               mode === "signIn" ? "current-password" : "new-password"
             }
             required
-            className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
+            className="auth-input mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-900 focus:outline-none"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
