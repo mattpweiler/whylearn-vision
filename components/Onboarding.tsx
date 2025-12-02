@@ -174,6 +174,18 @@ export const OnboardingFlow = () => {
             This app helps you go from “I don’t know what I’m doing” to a clear
             plan for today, this week, this month, and your year.
           </p>
+          <p className="text-xs text-slate-500">
+            By continuing you agree to our
+            <a
+              href="/privacy"
+              className="font-semibold text-slate-900 underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Privacy Policy
+            </a>
+            .
+          </p>
           <button
             className="w-full rounded-xl bg-slate-900 py-3 text-white"
             onClick={() => setStep(2)}

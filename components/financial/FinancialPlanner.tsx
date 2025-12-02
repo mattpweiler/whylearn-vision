@@ -49,6 +49,16 @@ const PageSection = ({ children }: { children: ReactNode }) => (
   <section className="space-y-6">{children}</section>
 );
 
+const FinancialDisclaimer = () => (
+  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
+    <p className="font-semibold text-slate-800">Heads up</p>
+    <p className="mt-1">
+      These tools rely on self-reported data. They are for planning only—nothing here is
+      investment, tax, or legal advice.
+    </p>
+  </div>
+);
+
 interface FinancialPlannerProps {
   showIntro?: boolean;
   initialMode?: "projections" | "statements";
@@ -172,6 +182,7 @@ export const FinancialPlanner = ({
           </p>
         </header>
       ) : null}
+      <FinancialDisclaimer />
 
       {enableModeToggle ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">

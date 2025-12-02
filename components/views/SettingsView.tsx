@@ -21,6 +21,7 @@ const viewOptions: { key: ViewKey; label: string }[] = [
 
 export const SettingsView = ({ state, updateState }: ViewProps) => {
   const [profileDraft, setProfileDraft] = useState(state.profile);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const saveProfile = () => {
     updateState((prev) => ({ ...prev, profile: profileDraft }));
@@ -31,6 +32,26 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
       ...prev,
       settings: { ...prev.settings, ...changes },
     }));
+  };
+
+  const deleteAccount = async () => {
+    if (typeof window === "undefined") return;
+    const confirmDelete = window.confirm(
+      "This will permanently delete your account and all synced data. Are you sure?"
+    );
+    if (!confirmDelete) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch("/api/account/delete", {
+        method: "POST",
+      });
+      if (!response.ok) throw new Error("Delete failed");
+      window.location.href = "/";
+    } catch (err) {
+      console.error(err);
+      alert("Unable to delete account right now. Please try again later.");
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -119,6 +140,28 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
                 }
               />
             </label>
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-xs">
+              <p className="font-semibold text-slate-900">Privacy policy</p>
+              <p className="mt-1 text-slate-600">
+                Review how your data is handled any time. View the full policy&nbsp;
+                <a
+                  className="font-semibold text-slate-900 underline"
+                  href="/privacy"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  here
+                </a>
+                .
+              </p>
+              <button
+                className="mt-3 w-full rounded-full border border-red-100 px-3 py-2 text-sm font-semibold text-red-600 transition hover:border-red-300 disabled:opacity-60"
+                onClick={deleteAccount}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting…" : "Delete account"}
+              </button>
+            </div>
           </div>
         </section>
       </div>

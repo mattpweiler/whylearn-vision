@@ -47,7 +47,13 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
   };
 
   const activeGoals = state.goals.filter((goal) => goal.status === "active");
-  const completedGoals = state.goals.filter((goal) => goal.status === "completed");
+  const completedGoals = state.goals
+    .filter((goal) => goal.status === "completed")
+    .sort(
+      (a: any, b: any) =>
+        new Date(b.completedAt ?? b.createdAt).getTime() -
+        new Date(a.completedAt ?? a.createdAt).getTime()
+    );
   const progressTotal = activeGoals.length + completedGoals.length;
   const progressPercent =
     progressTotal === 0 ? 0 : Math.round((completedGoals.length / progressTotal) * 100);
@@ -127,6 +133,22 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
   };
 
   const cancelGoalEdit = () => setEditingGoalId(null);
+
+  const toggleGoalCompletion = (goalId: string) => {
+    updateState((prev) => ({
+      ...prev,
+      goals: prev.goals.map((goal) =>
+        goal.id === goalId
+          ? {
+              ...goal,
+              status: goal.status === "completed" ? "active" : "completed",
+              completedAt:
+                goal.status === "completed" ? undefined : new Date().toISOString(),
+            }
+          : goal
+      ),
+    }));
+  };
 
   return (
     <div className="space-y-6">
@@ -294,6 +316,12 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                       Edit goal
                     </button>
                     <button
+                      className="font-semibold text-emerald-600 hover:text-emerald-700"
+                      onClick={() => toggleGoalCompletion(goal.id)}
+                    >
+                      Mark {goal.status === "completed" ? "active" : "complete"}
+                    </button>
+                    <button
                       className="font-semibold text-red-500 hover:text-red-600"
                       onClick={() => deleteGoal(goal.id)}
                     >
@@ -379,6 +407,45 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
           >
             Create goal
           </button>
+        </section>
+      )}
+
+      {completedGoals.length > 0 && (
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-lg font-semibold text-slate-900">Completed goals</p>
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {completedGoals.length}
+            </span>
+          </div>
+          <div className="mt-4 space-y-3">
+            {completedGoals.map((goal: any) => (
+              <div
+                key={goal.id}
+                className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {goal.title}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Completed {formatDisplayDate(goal.completedAt ?? goal.createdAt)}
+                    </p>
+                  </div>
+                  <button
+                    className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                    onClick={() => toggleGoalCompletion(goal.id)}
+                  >
+                    Mark active
+                  </button>
+                </div>
+                {goal.description && (
+                  <p className="mt-2 text-sm text-slate-600">{goal.description}</p>
+                )}
+              </div>
+            ))}
+          </div>
         </section>
       )}
     </div>

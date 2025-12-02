@@ -105,8 +105,8 @@ export const NextStepsView = () => {
           What are my next steps?
         </h2>
         <p className="mt-2 text-sm text-slate-600">
-          Ask anything about your goals, habits, schedule, or focus. The AI
-          coach will respond with conversational guidance followed by concrete,
+          Ask anything about your goals, habits, schedule, or focus. AI is used to analyze your current goals, reflections, 
+          finances, life scores, and will respond with conversational guidance followed by concrete,
           step-by-step next moves.
         </p>
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
