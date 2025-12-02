@@ -11,10 +11,8 @@ const navItems: {
   icon: string;
 }[] = [
   { key: "today", label: "Today", icon: "☀️" },
-  { key: "week", label: "This Week", icon: "📅" },
-  { key: "month", label: "This Month", icon: "🗓️" },
+  { key: "planner", label: "Planner", icon: "🗓️" },
   { key: "year", label: "Year Goals Progress", icon: "🏔️" },
-  { key: "backlog", label: "Backlog Tasks", icon: "🗂️" },
   {
     key: "financial_freedom",
     label: "Financial Freedom",
@@ -34,7 +32,7 @@ const navItems: {
   { key: "settings", label: "Settings", icon: "⚙️" },
 ];
 
-const DEMO_ALLOWED_VIEWS: ViewKey[] = ["today", "week", "month", "backlog"];
+const DEMO_ALLOWED_VIEWS: ViewKey[] = ["today", "planner"];
 
 export const Sidebar = ({
   current,

@@ -120,15 +120,7 @@ export interface AiSession {
 }
 
 export interface UserSettings {
-  defaultHomeView:
-    | "today"
-    | "week"
-    | "month"
-    | "year"
-    | "direction"
-    | "financial_freedom"
-    | "financial_profit"
-    | "backlog";
+  defaultHomeView: ViewKey;
   weekStartDay: 0 | 1;
   showLifeAreaSummaryOnToday: boolean;
   autoGenerateTasksFromAi: boolean;
@@ -156,12 +148,10 @@ export interface AppState {
 
 export type ViewKey =
   | "today"
-  | "week"
-  | "month"
+  | "planner"
   | "year"
   | "direction"
   | "financial_freedom"
   | "financial_profit"
   | "next_steps"
-  | "backlog"
   | "settings";

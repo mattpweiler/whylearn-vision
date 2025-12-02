@@ -17,13 +17,11 @@ const toAiRole = (value?: string | null): AiMessageRole => {
 
 const allowedHomeViews: ViewKey[] = [
   "today",
-  "week",
-  "month",
+  "planner",
   "year",
   "direction",
   "financial_freedom",
   "financial_profit",
-  "backlog",
   "settings",
 ];
 
@@ -33,6 +31,9 @@ const normalizeHomeView = (
 ): ViewKey => {
   if (!value) return fallback;
   if (value === "financial") return "financial_freedom";
+  if (value === "week" || value === "month" || value === "backlog") {
+    return "planner";
+  }
   if (allowedHomeViews.includes(value as ViewKey)) {
     return value as ViewKey;
   }

@@ -1,0 +1,916 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { AppState, Task } from "@/lib/types";
+import {
+  endOfWeek,
+  formatDateKey,
+  formatDateWithWeekday,
+  generateId,
+  isTaskCompleted,
+  isWithinRange,
+  monthKey,
+  monthLabel,
+  normalizeDate,
+  startOfWeek,
+  taskEffectiveDate,
+  tasksByDateWithinRange,
+  todayKey,
+  weekDateKeys,
+} from "@/lib/utils";
+
+type PlannerMode = "week" | "month";
+
+interface ViewProps {
+  state: AppState;
+  updateState: (updater: (prev: AppState) => AppState) => void;
+  initialMode?: PlannerMode;
+}
+
+const parseDateKey = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  if (
+    Number.isNaN(year) ||
+    Number.isNaN(month) ||
+    Number.isNaN(day)
+  ) {
+    return new Date();
+  }
+  return new Date(year, month - 1, day);
+};
+
+const labelForDateKey = (value: string) => formatDateWithWeekday(value) || value;
+const nowMonthLabel = () => monthLabel(new Date());
+
+export const PlannerView = ({
+  state,
+  updateState,
+  initialMode = "week",
+}: ViewProps) => {
+  const weekStart = state.settings.weekStartDay ?? 1;
+  const today = todayKey();
+
+  const [mode, setMode] = useState<PlannerMode>(initialMode);
+  const [anchorDate, setAnchorDate] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [backlogTitle, setBacklogTitle] = useState("");
+  const [backlogGoalId, setBacklogGoalId] = useState("");
+  const [backlogCategory, setBacklogCategory] = useState("");
+  const [backlogDueDate, setBacklogDueDate] = useState("");
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
+
+  const normalizedAnchor = useMemo(
+    () => normalizeDate(anchorDate),
+    [anchorDate]
+  );
+
+  const weekStartDate = startOfWeek(normalizedAnchor, weekStart);
+  const weekEndDate = endOfWeek(normalizedAnchor, weekStart);
+  const weekDates = weekDateKeys(normalizedAnchor, weekStart);
+  const weekRangeStartKey = formatDateKey(weekStartDate);
+  const weekRangeEndKey = formatDateKey(weekEndDate);
+
+  const monthStartDate = useMemo(
+    () => new Date(normalizedAnchor.getFullYear(), normalizedAnchor.getMonth(), 1),
+    [normalizedAnchor]
+  );
+  const monthEndDate = useMemo(
+    () => new Date(normalizedAnchor.getFullYear(), normalizedAnchor.getMonth() + 1, 0),
+    [normalizedAnchor]
+  );
+  const calendarStartDate = startOfWeek(monthStartDate, weekStart);
+  const calendarEndDate = endOfWeek(monthEndDate, weekStart);
+  const calendarRangeStartKey = formatDateKey(calendarStartDate);
+  const calendarRangeEndKey = formatDateKey(calendarEndDate);
+  const monthLabelText = monthLabel(monthStartDate);
+  const monthKeyValue = monthKey(monthStartDate);
+
+  const rangeStartKey = mode === "week" ? weekRangeStartKey : calendarRangeStartKey;
+  const rangeEndKey = mode === "week" ? weekRangeEndKey : calendarRangeEndKey;
+
+  useEffect(() => {
+    if (!isWithinRange(selectedDate, rangeStartKey, rangeEndKey)) {
+      setSelectedDate(rangeStartKey);
+    }
+  }, [rangeEndKey, rangeStartKey, selectedDate]);
+
+  const tasksByDate = useMemo(
+    () =>
+      tasksByDateWithinRange(state.tasks, rangeStartKey, rangeEndKey),
+    [state.tasks, rangeEndKey, rangeStartKey]
+  );
+
+  const selectedDayTasks = tasksByDate[selectedDate] ?? [];
+  const selectedDayLabel = labelForDateKey(selectedDate);
+
+  const goalLookup = useMemo(() => {
+    const map: Record<string, string> = {};
+    state.goals.forEach((goal) => {
+      map[goal.id] = goal.title;
+    });
+    return map;
+  }, [state.goals]);
+
+  const backlogTasks = useMemo(() => {
+    const list = state.tasks.filter((task) => {
+      const hasSchedule = Boolean(task.scheduledDate) || Boolean(task.scheduledFor);
+      return !hasSchedule;
+    });
+    return list.sort((a, b) => {
+      const aDue = a.dueDate ?? "";
+      const bDue = b.dueDate ?? "";
+      if (aDue && bDue) return aDue.localeCompare(bDue);
+      if (aDue) return -1;
+      if (bDue) return 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [state.tasks]);
+
+  const backlogCompletedCount = backlogTasks.filter((task) =>
+    isTaskCompleted(task)
+  ).length;
+
+  const weeklyReflection = useMemo(
+    () =>
+      state.reflections.find(
+        (ref) =>
+          ref.type === "weekly" && ref.content?.weekStart === weekRangeStartKey
+      ),
+    [state.reflections, weekRangeStartKey]
+  );
+
+  const [weeklyIntent, setWeeklyIntent] = useState(
+    weeklyReflection?.content?.intent ?? ""
+  );
+  const [weeklyPriorities, setWeeklyPriorities] = useState<string[]>(
+    weeklyReflection?.content?.priorities ?? ["", "", ""]
+  );
+
+  useEffect(() => {
+    setWeeklyIntent(weeklyReflection?.content?.intent ?? "");
+    setWeeklyPriorities(
+      weeklyReflection?.content?.priorities ?? ["", "", ""]
+    );
+  }, [weeklyReflection]);
+
+  const monthlyReflection = useMemo(
+    () =>
+      state.reflections.find(
+        (ref) => ref.type === "monthly" && ref.content?.month === monthKeyValue
+      ),
+    [state.reflections, monthKeyValue]
+  );
+
+  const [monthlyFocus, setMonthlyFocus] = useState(
+    monthlyReflection?.content?.focus ?? ""
+  );
+
+  useEffect(() => {
+    setMonthlyFocus(monthlyReflection?.content?.focus ?? "");
+  }, [monthlyReflection]);
+
+  const saveWeeklyPlan = () => {
+    const now = new Date().toISOString();
+    updateState((prev) => {
+      const payload = {
+        id: weeklyReflection?.id ?? generateId(),
+        type: "weekly" as const,
+        content: {
+          intent: weeklyIntent,
+          priorities: weeklyPriorities,
+          weekStart: weekRangeStartKey,
+        },
+        createdAt: weeklyReflection?.createdAt ?? now,
+      };
+      const filtered = weeklyReflection
+        ? prev.reflections.filter((ref) => ref.id !== weeklyReflection.id)
+        : prev.reflections;
+      return { ...prev, reflections: [...filtered, payload] };
+    });
+  };
+
+  const saveMonthlyFocus = () => {
+    const now = new Date().toISOString();
+    const existingMilestones = monthlyReflection?.content?.milestones ?? [];
+    updateState((prev) => {
+      const payload = {
+        id: monthlyReflection?.id ?? generateId(),
+        type: "monthly" as const,
+        content: {
+          focus: monthlyFocus,
+          milestones: existingMilestones,
+          month: monthKeyValue,
+        },
+        createdAt: monthlyReflection?.createdAt ?? now,
+      };
+      const filtered = monthlyReflection
+        ? prev.reflections.filter((ref) => ref.id !== monthlyReflection.id)
+        : prev.reflections;
+      return { ...prev, reflections: [...filtered, payload] };
+    });
+  };
+
+  const toggleTaskCompletion = (taskId: string) => {
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              status: isTaskCompleted(task) ? "todo" : "done",
+            }
+          : task
+      ),
+    }));
+  };
+
+  const deleteTask = (taskId: string) => {
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.filter((task) => task.id !== taskId),
+    }));
+  };
+
+  const moveTaskToDate = (taskId: string, dateKey: string) => {
+    if (!dateKey) return;
+    const monthTag = monthLabel(parseDateKey(dateKey));
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              scheduledFor: dateKey,
+              scheduledDate: dateKey,
+              month: monthTag,
+            }
+          : task
+      ),
+    }));
+  };
+
+  const addTaskForSelectedDay = () => {
+    const title = newTaskTitle.trim();
+    if (!title || !selectedDate) return;
+    const now = new Date().toISOString();
+    const monthTag = monthLabel(parseDateKey(selectedDate));
+    updateState((prev) => ({
+      ...prev,
+      tasks: [
+        ...prev.tasks,
+        {
+          id: generateId(),
+          title,
+          status: "todo",
+          priority: "medium",
+          orderIndex: prev.tasks.length + 1,
+          scheduledFor: selectedDate,
+          scheduledDate: selectedDate,
+          month: monthTag,
+          createdAt: now,
+        },
+      ],
+    }));
+    setNewTaskTitle("");
+  };
+
+  const moveTaskToBacklog = (taskId: string) => {
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              scheduledFor: undefined,
+              scheduledDate: null,
+            }
+          : task
+      ),
+    }));
+  };
+
+  const addBacklogTask = () => {
+    if (!backlogTitle.trim()) return;
+    const stamp = new Date().toISOString();
+    const monthTag = backlogDueDate
+      ? monthLabel(parseDateKey(backlogDueDate))
+      : nowMonthLabel();
+    updateState((prev) => ({
+      ...prev,
+      tasks: [
+        ...prev.tasks,
+        {
+          id: generateId(),
+          title: backlogTitle.trim(),
+          status: "todo",
+          priority: "medium",
+          goalId: backlogGoalId || undefined,
+          backlogCategory: backlogCategory || undefined,
+          dueDate: backlogDueDate || undefined,
+          month: monthTag,
+          orderIndex: prev.tasks.length + 1,
+          createdAt: stamp,
+        },
+      ],
+    }));
+    setBacklogTitle("");
+    setBacklogGoalId("");
+    setBacklogCategory("");
+    setBacklogDueDate("");
+  };
+
+  const updateBacklogTask = (taskId: string, updates: Partial<Task>) => {
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((task) =>
+        task.id === taskId ? { ...task, ...updates } : task
+      ),
+    }));
+  };
+
+  const toggleBacklogTaskCompletion = (taskId: string) => {
+    const task = state.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    const nextStatus = isTaskCompleted(task) ? "todo" : "done";
+    updateBacklogTask(taskId, { status: nextStatus });
+  };
+
+  const scheduleBacklogTask = (taskId: string) => {
+    if (!selectedDate) return;
+    moveTaskToDate(taskId, selectedDate);
+    updateBacklogTask(taskId, { status: "todo" });
+  };
+
+  const handleSelectDate = (dateKey: string, recenter = false) => {
+    setSelectedDate(dateKey);
+    if (mode === "week" || recenter) {
+      setAnchorDate(parseDateKey(dateKey));
+    }
+  };
+
+  const goToToday = () => {
+    const now = new Date();
+    setAnchorDate(now);
+    setSelectedDate(today);
+  };
+
+  const goBackward = () => {
+    setAnchorDate((prev) => {
+      const next = new Date(prev);
+      if (mode === "month") {
+        next.setMonth(next.getMonth() - 1);
+      } else {
+        next.setDate(next.getDate() - 7);
+      }
+      return next;
+    });
+  };
+
+  const goForward = () => {
+    setAnchorDate((prev) => {
+      const next = new Date(prev);
+      if (mode === "month") {
+        next.setMonth(next.getMonth() + 1);
+      } else {
+        next.setDate(next.getDate() + 7);
+      }
+      return next;
+    });
+  };
+
+  const switchMode = (nextMode: PlannerMode) => {
+    setMode(nextMode);
+    setAnchorDate(parseDateKey(selectedDate));
+  };
+
+  const weekdayLabels = useMemo(() => {
+    const start = startOfWeek(new Date(), weekStart);
+    return Array.from({ length: 7 }).map((_, idx) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + idx);
+      return d.toLocaleDateString(undefined, { weekday: "short" });
+    });
+  }, [weekStart]);
+
+  const monthCalendarRows = useMemo(() => {
+    const rows: { key: string; inMonth: boolean }[][] = [];
+    const days: { key: string; inMonth: boolean }[] = [];
+    const cursor = new Date(calendarStartDate);
+    while (cursor <= calendarEndDate) {
+      days.push({
+        key: formatDateKey(cursor),
+        inMonth: cursor.getMonth() === monthStartDate.getMonth(),
+      });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    for (let i = 0; i < days.length; i += 7) {
+      rows.push(days.slice(i, i + 7));
+    }
+    return rows;
+  }, [calendarEndDate, calendarStartDate, monthStartDate]);
+
+  return (
+    <div className="space-y-6">
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="rounded-2xl bg-slate-100 p-1">
+              <button
+                className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                  mode === "week"
+                    ? "bg-white text-slate-900 shadow"
+                    : "text-slate-500"
+                }`}
+                onClick={() => switchMode("week")}
+              >
+                Week view
+              </button>
+              <button
+                className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                  mode === "month"
+                    ? "bg-white text-slate-900 shadow"
+                    : "text-slate-500"
+                }`}
+                onClick={() => switchMode("month")}
+              >
+                Month view
+              </button>
+            </div>
+            <div className="flex rounded-2xl border border-slate-200">
+              <button
+                className="rounded-l-2xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"
+                onClick={goBackward}
+              >
+                ←
+              </button>
+              <button
+                className="px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"
+                onClick={goToToday}
+              >
+                Today
+              </button>
+              <button
+                className="rounded-r-2xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"
+                onClick={goForward}
+              >
+                →
+              </button>
+            </div>
+          </div>
+          <div className="text-sm font-medium text-slate-600">
+            Focused on{" "}
+            {mode === "week"
+              ? `${labelForDateKey(weekRangeStartKey)} - ${labelForDateKey(
+                  weekRangeEndKey
+                )}`
+              : monthLabelText}
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <div className="mb-2 grid grid-cols-7 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {weekdayLabels.map((label) => (
+              <span key={label}>{label}</span>
+            ))}
+          </div>
+          {mode === "week" ? (
+            <div className="grid grid-cols-7 gap-2">
+              {weekDates.map((dateKey) => {
+                const dayTasks = tasksByDate[dateKey] ?? [];
+                const isSelected = selectedDate === dateKey;
+                const isToday = today === dateKey;
+                return (
+                  <button
+                    key={dateKey}
+                    className={`flex flex-col rounded-2xl border p-3 text-left transition ${
+                      isSelected
+                        ? "border-slate-900 bg-slate-900/5"
+                        : "border-slate-100 hover:border-slate-200"
+                    }`}
+                    onClick={() => handleSelectDate(dateKey)}
+                  >
+                    <div className="flex items-center justify-between text-sm font-semibold">
+                      <span>{dateKey.split("-")[2]}</span>
+                      {isToday && (
+                        <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-xs text-white">
+                          Today
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 space-y-1 text-xs text-slate-600">
+                      {dayTasks.slice(0, 3).map((task) => (
+                        <p
+                          key={task.id}
+                          className={`truncate ${
+                            isTaskCompleted(task)
+                              ? "text-emerald-600 line-through"
+                              : ""
+                          }`}
+                        >
+                          {task.title}
+                        </p>
+                      ))}
+                      {dayTasks.length > 3 && (
+                        <p className="text-[10px] text-slate-400">
+                          +{dayTasks.length - 3} more
+                        </p>
+                      )}
+                      {dayTasks.length === 0 && (
+                        <p className="text-[10px] text-slate-400">No tasks</p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {monthCalendarRows.map((row, idx) => (
+                <div key={idx} className="grid grid-cols-7 gap-2">
+                  {row.map((day) => {
+                    const dayTasks = tasksByDate[day.key] ?? [];
+                    const isSelected = selectedDate === day.key;
+                    const isToday = today === day.key;
+                    return (
+                      <button
+                        key={day.key}
+                        className={`flex flex-col rounded-2xl border p-3 text-left text-sm transition ${
+                          isSelected
+                            ? "border-slate-900 bg-slate-900/5"
+                            : "border-slate-100 hover:border-slate-200"
+                        } ${day.inMonth ? "" : "opacity-60"}`}
+                        onClick={() => handleSelectDate(day.key, !day.inMonth)}
+                      >
+                        <div className="flex items-center justify-between font-semibold">
+                          <span>{day.key.split("-")[2]}</span>
+                          {isToday && (
+                            <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] text-white">
+                              Today
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-2 space-y-1 text-[11px] text-slate-600">
+                          {dayTasks.slice(0, 2).map((task) => (
+                            <p
+                              key={task.id}
+                              className={`truncate ${
+                                isTaskCompleted(task)
+                                  ? "text-emerald-600 line-through"
+                                  : ""
+                              }`}
+                            >
+                              {task.title}
+                            </p>
+                          ))}
+                          {dayTasks.length === 0 && (
+                            <p className="text-[10px] text-slate-400">No tasks</p>
+                          )}
+                          {dayTasks.length > 2 && (
+                            <p className="text-[10px] text-slate-400">
+                              +{dayTasks.length - 2} more
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-1">
+          <p className="text-lg font-semibold text-slate-900">
+            {selectedDayLabel}
+          </p>
+          <p className="text-sm text-slate-500">
+            Drop tasks here or pull in backlog items below.
+          </p>
+        </div>
+        <div className="mt-4 space-y-3">
+          {selectedDayTasks.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+              Nothing scheduled for this day yet.
+            </p>
+          ) : (
+            selectedDayTasks.map((task) => {
+              const taskDate = taskEffectiveDate(task) ?? selectedDate;
+              return (
+                <div
+                  key={task.id}
+                  className="flex flex-col gap-3 rounded-2xl border border-slate-100 p-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={isTaskCompleted(task)}
+                      onChange={() => toggleTaskCompletion(task.id)}
+                    />
+                    <div className="flex-1">
+                      <p
+                        className={`font-semibold ${
+                          isTaskCompleted(task)
+                            ? "text-emerald-600 line-through"
+                            : "text-slate-900"
+                        }`}
+                      >
+                        {task.title}
+                      </p>
+                      {task.goalId && (
+                        <p className="text-xs text-slate-500">
+                          Linked goal: {goalLookup[task.goalId]}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      className="text-xs font-semibold text-red-500"
+                      onClick={() => deleteTask(task.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <input
+                      type="date"
+                      className="rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                      value={taskDate}
+                      onChange={(e) => moveTaskToDate(task.id, e.target.value)}
+                    />
+                    <button
+                      className="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600"
+                      onClick={() => moveTaskToBacklog(task.id)}
+                    >
+                      Move to backlog
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <input
+            className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+            placeholder="Add task for this day…"
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addTaskForSelectedDay()}
+          />
+          <button
+            className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
+            onClick={addTaskForSelectedDay}
+          >
+            Add task
+          </button>
+        </div>
+      </section>
+
+      {mode === "week" ? (
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-1">
+            <p className="text-lg font-semibold text-slate-900">
+              Weekly intent & top 3
+            </p>
+            <p className="text-sm text-slate-500">
+              Capture the vibe and key moves for this week.
+            </p>
+          </div>
+          <textarea
+            className="mt-4 w-full rounded-2xl border border-slate-200 p-3 text-sm"
+            rows={3}
+            value={weeklyIntent}
+            onChange={(e) => setWeeklyIntent(e.target.value)}
+            placeholder="What’s the intention for this week?"
+          />
+          <div className="mt-4 space-y-3">
+            {weeklyPriorities.map((priority, idx) => (
+              <div key={idx} className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-slate-500">
+                  {idx + 1}.
+                </span>
+                <input
+                  className="flex-1 rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                  placeholder="e.g., Close out proposal"
+                  value={priority}
+                  onChange={(e) =>
+                    setWeeklyPriorities((prev) => {
+                      const next = [...prev];
+                      next[idx] = e.target.value;
+                      return next;
+                    })
+                  }
+                />
+              </div>
+            ))}
+          </div>
+          <button
+            className="mt-4 w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
+            onClick={saveWeeklyPlan}
+          >
+            Save weekly plan
+          </button>
+        </section>
+      ) : (
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-1">
+            <p className="text-lg font-semibold text-slate-900">
+              Monthly focus
+            </p>
+            <p className="text-sm text-slate-500">
+              Define the theme or milestone for {monthLabelText}.
+            </p>
+          </div>
+          <textarea
+            className="mt-4 w-full rounded-2xl border border-slate-200 p-3 text-sm"
+            rows={4}
+            value={monthlyFocus}
+            onChange={(e) => setMonthlyFocus(e.target.value)}
+            placeholder="Month’s theme, milestone, or metric."
+          />
+          <button
+            className="mt-4 w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
+            onClick={saveMonthlyFocus}
+          >
+            Save monthly focus
+          </button>
+        </section>
+      )}
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-2">
+          <p className="text-lg font-semibold text-slate-900">Create a Task</p>
+          <p className="text-sm text-slate-500">
+            Drop ideas, maintenance items, or project moves you&apos;ll schedule later.
+          </p>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <input
+            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm md:col-span-2"
+            placeholder="Capture backlog task…"
+            value={backlogTitle}
+            onChange={(e) => setBacklogTitle(e.target.value)}
+          />
+          <select
+            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+            value={backlogGoalId}
+            onChange={(e) => setBacklogGoalId(e.target.value)}
+          >
+            <option value="">No goal link</option>
+            {state.goals.map((goal) => (
+              <option key={goal.id} value={goal.id}>
+                {goal.title}
+              </option>
+            ))}
+          </select>
+          <input
+            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+            placeholder="Area / category (optional)"
+            value={backlogCategory}
+            onChange={(e) => setBacklogCategory(e.target.value)}
+          />
+          <input
+            type="date"
+            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+            value={backlogDueDate}
+            onChange={(e) => setBacklogDueDate(e.target.value)}
+          />
+          <button
+            className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white md:col-span-2"
+            onClick={addBacklogTask}
+          >
+            Add to Task Backlog
+          </button>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-1">
+          <p className="text-lg font-semibold text-slate-900">
+            All Tasks
+          </p>
+          <p className="text-sm text-slate-500">
+            Review unscheduled tasks and drop them onto {selectedDayLabel}.
+          </p>
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl bg-slate-50 p-4 text-center">
+            <p className="text-xs uppercase tracking-wide text-slate-500">
+              Total tasks
+            </p>
+            <p className="text-3xl font-semibold text-slate-900">
+              {backlogTasks.length}
+            </p>
+          </div>
+          <div className="rounded-2xl bg-slate-50 p-4 text-center">
+            <p className="text-xs uppercase tracking-wide text-slate-500">
+              Completed
+            </p>
+            <p className="text-3xl font-semibold text-slate-900">
+              {backlogCompletedCount}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-3">
+          {backlogTasks.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+              Nothing in the backlog yet. Capture a few above.
+            </p>
+          ) : (
+            backlogTasks.map((task) => {
+              const isDone = isTaskCompleted(task);
+              return (
+                <div
+                  key={task.id}
+                  className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between"
+                >
+                  <div>
+                    <p
+                      className={`font-semibold ${
+                        isDone ? "text-emerald-600 line-through" : "text-slate-900"
+                      }`}
+                    >
+                      {task.title}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {task.dueDate ? `Due ${task.dueDate}` : "No due date"}
+                    </p>
+                    {task.goalId && (
+                      <p className="text-xs text-slate-500">
+                        Linked goal: {goalLookup[task.goalId]}
+                      </p>
+                    )}
+                    {task.backlogCategory && (
+                      <p className="text-xs text-slate-500">
+                        Area: {task.backlogCategory}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <input
+                      type="date"
+                      className="rounded-xl border border-slate-200 px-3 py-1 text-sm"
+                      value={task.dueDate ?? ""}
+                      onChange={(e) =>
+                        updateBacklogTask(task.id, {
+                          dueDate: e.target.value || undefined,
+                          month: e.target.value
+                            ? monthLabel(new Date(e.target.value))
+                            : task.month ?? nowMonthLabel(),
+                        })
+                      }
+                    />
+                    <select
+                      className="rounded-xl border border-slate-200 px-3 py-1 text-sm"
+                      value={task.goalId ?? ""}
+                      onChange={(e) =>
+                        updateBacklogTask(task.id, { goalId: e.target.value || undefined })
+                      }
+                    >
+                      <option value="">Goal link</option>
+                      {state.goals.map((goal) => (
+                        <option key={goal.id} value={goal.id}>
+                          {goal.title}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className={`rounded-full px-3 py-1 font-semibold ${
+                        isDone
+                          ? "bg-slate-200 text-slate-700"
+                          : "bg-emerald-100 text-emerald-700"
+                      }`}
+                      onClick={() => toggleBacklogTaskCompletion(task.id)}
+                    >
+                      {isDone ? "Mark pending" : "Mark done"}
+                    </button>
+                    <button
+                      className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white disabled:opacity-50"
+                      onClick={() => scheduleBacklogTask(task.id)}
+                      disabled={isDone || !selectedDate}
+                    >
+                      Schedule {selectedDayLabel}
+                    </button>
+                    <button
+                      className="rounded-full px-3 py-1 font-semibold text-red-500"
+                      onClick={() => deleteTask(task.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </section>
+    </div>
+  );
+};

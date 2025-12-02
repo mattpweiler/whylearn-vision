@@ -10,14 +10,12 @@ interface ViewProps {
 
 const viewOptions: { key: ViewKey; label: string }[] = [
   { key: "today", label: "Today" },
-  { key: "week", label: "This Week" },
-  { key: "month", label: "This Month" },
+  { key: "planner", label: "Week & Month Planner" },
   { key: "year", label: "Year Goals" },
   { key: "direction", label: "Direction" },
   { key: "financial_freedom", label: "Financial Freedom" },
   { key: "financial_profit", label: "Monthly Profit" },
   { key: "next_steps", label: "What are My Next Steps?" },
-  { key: "backlog", label: "Backlog" },
   { key: "settings", label: "Settings" },
 ];
 

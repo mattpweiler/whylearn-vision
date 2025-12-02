@@ -6,12 +6,10 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { PageHeader } from "@/components/layout/Header";
 import { DirectionView } from "@/components/views/DirectionView";
 import { FinancialFreedomView } from "@/components/views/FinancialFreedomView";
-import { MonthView } from "@/components/views/MonthView";
+import { PlannerView } from "@/components/views/PlannerView";
 import { SettingsView } from "@/components/views/SettingsView";
 import { TodayView } from "@/components/views/TodayView";
-import { WeekView } from "@/components/views/WeekView";
 import { YearGoalsView } from "@/components/views/YearGoalsView";
-import { BacklogView } from "@/components/views/BacklogView";
 import { MonthlyProfitView } from "@/components/views/MonthlyProfitView";
 import { NextStepsView } from "@/components/views/NextStepsView";
 import { ViewKey } from "@/lib/types";
@@ -22,21 +20,13 @@ const meta: Record<ViewKey, { title: string; subtitle: string }> = {
     title: "Today",
     subtitle: "Just do these things TODAY. Commit to them.",
   },
-  week: {
-    title: "This Week",
-    subtitle: "Lock in your rhythm and top 3 priorities this Week",
-  },
-  month: {
-    title: "This Month",
-    subtitle: "Projects, milestones, and medium-range planning.",
+  planner: {
+    title: "Planner",
+    subtitle: "Plan the week or month, drag in tasks, and stay on rhythm.",
   },
   year: {
     title: "Year Goals",
     subtitle: "Only You Decide How Successful Your Year Is",
-  },
-  backlog: {
-    title: "Backlog Tasks",
-    subtitle: "Capture, organize, and ready tasks for future scheduling.",
   },
   direction: {
     title: "Direction & Purpose",
@@ -62,9 +52,7 @@ const meta: Record<ViewKey, { title: string; subtitle: string }> = {
 
 const viewOrder: ViewKey[] = [
   "today",
-  "week",
-  "month",
-  "backlog",
+  "planner",
   "year",
   "direction",
   "next_steps",
@@ -73,12 +61,7 @@ const viewOrder: ViewKey[] = [
   "settings",
 ];
 
-const DEMO_ALLOWED_VIEW_SET = new Set<ViewKey>([
-  "today",
-  "week",
-  "month",
-  "backlog",
-]);
+const DEMO_ALLOWED_VIEW_SET = new Set<ViewKey>(["today", "planner"]);
 
 export const AppShell = () => {
   const { state, updateState } = useAppState();
@@ -86,11 +69,16 @@ export const AppShell = () => {
   const isDemo = !session;
 
   const resolvedDefaultView = useMemo(() => {
-    const desired = state.settings.defaultHomeView ?? "today";
-    if (isDemo && !DEMO_ALLOWED_VIEW_SET.has(desired)) {
+    const desired = (state.settings.defaultHomeView ??
+      "today") as ViewKey | "week" | "month" | "backlog";
+    const normalized: ViewKey =
+      desired === "week" || desired === "month" || desired === "backlog"
+        ? "planner"
+        : desired;
+    if (isDemo && !DEMO_ALLOWED_VIEW_SET.has(normalized)) {
       return "today";
     }
-    return desired;
+    return normalized;
   }, [state.settings.defaultHomeView, isDemo]);
 
   const [currentView, setCurrentView] = useState<ViewKey>(
@@ -119,10 +107,8 @@ export const AppShell = () => {
 
   const viewComponent = (() => {
     switch (currentView) {
-      case "week":
-        return <WeekView state={state} updateState={updateState} />;
-      case "month":
-        return <MonthView state={state} updateState={updateState} />;
+      case "planner":
+        return <PlannerView state={state} updateState={updateState} />;
       case "year":
         return <YearGoalsView state={state} updateState={updateState} />;
       case "direction":
@@ -133,8 +119,6 @@ export const AppShell = () => {
         return <MonthlyProfitView />;
       case "next_steps":
         return <NextStepsView />;
-      case "backlog":
-        return <BacklogView state={state} updateState={updateState} />;
       case "settings":
         return <SettingsView state={state} updateState={updateState} />;
       case "today":
