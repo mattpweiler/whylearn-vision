@@ -148,7 +148,7 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
         ...prev.reflections,
         {
           id: generateId(),
-          type: reflectionType as "weekly" | "crisis",
+          type: reflectionType as "weekly" | "daily",
           content: {
             note: reflectionNote.trim(),
             date: reflectionDate,
@@ -367,7 +367,7 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
               style={{ cursor: "pointer" }}
             >
               <option value="weekly">Weekly</option>
-              <option value="crisis">Crisis</option>
+              <option value="daily">Daily</option>
             </select>
             <input
               type="date"

@@ -67,6 +67,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     priority: "medium",
   });
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const normalizedAnchor = useMemo(
     () => normalizeDate(anchorDate),
@@ -181,47 +182,6 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     setMonthlyFocus(monthlyReflection?.content?.focus ?? "");
   }, [monthlyReflection]);
 
-  const saveWeeklyPlan = () => {
-    const now = new Date().toISOString();
-    updateState((prev) => {
-      const payload = {
-        id: weeklyReflection?.id ?? generateId(),
-        type: "weekly" as const,
-        content: {
-          intent: weeklyIntent,
-          priorities: weeklyPriorities,
-          weekStart: weekRangeStartKey,
-        },
-        createdAt: weeklyReflection?.createdAt ?? now,
-      };
-      const filtered = weeklyReflection
-        ? prev.reflections.filter((ref) => ref.id !== weeklyReflection.id)
-        : prev.reflections;
-      return { ...prev, reflections: [...filtered, payload] };
-    });
-  };
-
-  const saveMonthlyFocus = () => {
-    const now = new Date().toISOString();
-    const existingMilestones = monthlyReflection?.content?.milestones ?? [];
-    updateState((prev) => {
-      const payload = {
-        id: monthlyReflection?.id ?? generateId(),
-        type: "monthly" as const,
-        content: {
-          focus: monthlyFocus,
-          milestones: existingMilestones,
-          month: monthKeyValue,
-        },
-        createdAt: monthlyReflection?.createdAt ?? now,
-      };
-      const filtered = monthlyReflection
-        ? prev.reflections.filter((ref) => ref.id !== monthlyReflection.id)
-        : prev.reflections;
-      return { ...prev, reflections: [...filtered, payload] };
-    });
-  };
-
   const toggleTaskCompletion = (taskId: string | Task) => {
     updateState((prev) => ({
       ...prev,
@@ -330,6 +290,11 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     setBacklogGoalId("");
     setBacklogCategory("");
     setBacklogDueDate("");
+  };
+
+  const handleSubmitNewTask = () => {
+    addBacklogTask();
+    setIsCreateModalOpen(false);
   };
 
   const handleSelectDate = (dateKey: string, recenter = false) => {
@@ -555,13 +520,6 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                 >
                   Unschedule
                 </button>
-                <button
-                  className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white disabled:opacity-50"
-                  onClick={() => moveTaskToDate(task.id, selectedDate)}
-                  disabled={!selectedDate}
-                >
-                  Plan {selectedDayLabel}
-                </button>
               <button
                 className="rounded-full border border-slate-200 p-2 text-slate-600"
                 onClick={() => startTaskEdit(task)}
@@ -585,6 +543,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
   };
 
   return (
+    <>
     <div className="space-y-6">
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -756,61 +715,30 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
             </div>
           )}
         </div>
+        <div className="flex justify-end mt-4">
+        <button
+          className="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 hover:cursor-pointer"
+          onClick={() => setIsCreateModalOpen(true)}
+        >
+          + Add task
+        </button>
+      </div>
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-2">
-          <p className="text-lg font-semibold text-slate-900">Create a Task</p>
-          <p className="text-sm text-slate-500">
-            Drop ideas, maintenance items, or project moves you&apos;ll schedule later.
-          </p>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <input
-            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm md:col-span-2"
-            placeholder="Create task…"
-            value={backlogTitle}
-            onChange={(e) => setBacklogTitle(e.target.value)}
-          />
-          <select
-            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
-            value={backlogGoalId}
-            onChange={(e) => setBacklogGoalId(e.target.value)}
-          >
-            <option value="">No goal link</option>
-            {state.goals.map((goal) => (
-              <option key={goal.id} value={goal.id}>
-                {goal.title}
-              </option>
-            ))}
-          </select>
-          <input
-            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
-            placeholder="Area / category (optional)"
-            value={backlogCategory}
-            onChange={(e) => setBacklogCategory(e.target.value)}
-          />
-          <input
-            type="date"
-            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
-            value={backlogDueDate}
-            onChange={(e) => setBacklogDueDate(e.target.value)}
-          />
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-lg font-semibold text-slate-900">All tasks</p>
+            <p className="text-sm text-slate-500">
+              Review every task, grouped by the day it&apos;s planned for.
+            </p>
+          </div>
           <button
-            className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white md:col-span-2"
-            onClick={addBacklogTask}
+            className="mt-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 sm:mt-0 hover:border-slate-300 hover:bg-slate-50 hover:cursor-pointer"
+            onClick={() => setIsCreateModalOpen(true)}
           >
-            Add Task to Schedule
+            + Add task
           </button>
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-1">
-          <p className="text-lg font-semibold text-slate-900">All tasks</p>
-          <p className="text-sm text-slate-500">
-            Review every task, grouped by the day it&apos;s planned for.
-          </p>
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="rounded-2xl bg-slate-50 p-4 text-center">
@@ -906,5 +834,79 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
         </div>
       </section>
     </div>
+    {isCreateModalOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div
+          className="absolute inset-0 bg-slate-900/40"
+          onClick={() => setIsCreateModalOpen(false)}
+        />
+        <div className="relative z-10 w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xl font-semibold text-slate-900">Create a task</p>
+              <p className="text-sm text-slate-500">
+                Capture a task and optionally schedule it right away.
+              </p>
+            </div>
+            <button
+              className="rounded-full border border-slate-200 px-3 py-1 text-sm font-semibold text-slate-600"
+              onClick={() => setIsCreateModalOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+          <div className="mt-5 space-y-3">
+            <input
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+              placeholder="Task title"
+              value={backlogTitle}
+              onChange={(e) => setBacklogTitle(e.target.value)}
+            />
+            <select
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+              value={backlogGoalId}
+              onChange={(e) => setBacklogGoalId(e.target.value)}
+            >
+              <option value="">No goal link</option>
+              {state.goals.map((goal) => (
+                <option key={goal.id} value={goal.id}>
+                  {goal.title}
+                </option>
+              ))}
+            </select>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+                placeholder="Area / category (optional)"
+                value={backlogCategory}
+                onChange={(e) => setBacklogCategory(e.target.value)}
+              />
+              <input
+                type="date"
+                className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+                value={backlogDueDate}
+                onChange={(e) => setBacklogDueDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              className="flex-1 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+              onClick={handleSubmitNewTask}
+              disabled={!backlogTitle.trim()}
+            >
+              Save task
+            </button>
+            <button
+              className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600"
+              onClick={() => setIsCreateModalOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };

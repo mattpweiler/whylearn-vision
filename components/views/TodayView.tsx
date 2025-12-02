@@ -592,7 +592,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
             return (
               <div
                 key={habit.id}
-                className={`relative flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition-colors ${
+                className={`relative flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-1 transition-colors ${
                   completed
                     ? "border-emerald-100 bg-emerald-50/70 hover:border-emerald-200 hover:bg-emerald-50"
                     : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"
@@ -602,7 +602,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
                 <div className="flex flex-1 items-center gap-3">
                   <input
                     type="checkbox"
-                    className="h-5 w-5 accent-emerald-500"
+                    className="accent-emerald-500"
                     checked={completed}
                     onChange={() => toggleHabit(habit.id)}
                   />
