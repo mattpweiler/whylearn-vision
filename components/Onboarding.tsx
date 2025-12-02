@@ -10,15 +10,6 @@ const questions = [
     key: "displayName",
     label: "What should we call you? (Display name)",
   },
-  {
-    key: "betterFuture",
-    label:
-      "If your life felt clearly better 12 months from now, what changed?",
-  },
-  {
-    key: "worry",
-    label: "What are you most worried about right now?",
-  },
 ] as const;
 
 type GoalEntry = {
@@ -258,23 +249,14 @@ export const OnboardingFlow = () => {
     if (step === 3) {
       return (
         <div className="w-full max-w-2xl space-y-6">
-          <div>
-            <p className="text-2xl font-semibold text-slate-900">
-              Quick reflection
-            </p>
-            <p className="text-slate-600">
-              Capture what matters before we build your plan.
-            </p>
-          </div>
           <div className="space-y-4">
             {questions.map((q) => (
               <label key={q.key} className="block">
                 <span className="text-sm font-medium text-slate-800">
                   {q.label}
                 </span>
-                <textarea
+                <input
                   className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
-                  rows={3}
                   value={answers[q.key] ?? ""}
                   onChange={(e) =>
                     setAnswers((prev) => ({
@@ -404,16 +386,6 @@ export const OnboardingFlow = () => {
                 }
               />
             </div>
-            <label className="flex items-center gap-2 text-sm text-slate-600">
-              <input
-                type="checkbox"
-                checked={goalDraft.isStarred}
-                onChange={(e) =>
-                  setGoalDraft((prev) => ({ ...prev, isStarred: e.target.checked }))
-                }
-              />
-              Make this one of my “Big 3”
-            </label>
             <button
               className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white"
               onClick={addGoalEntry}

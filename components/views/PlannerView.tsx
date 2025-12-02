@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { AppState, Task } from "@/lib/types";
 import {
   endOfWeek,
@@ -12,19 +12,20 @@ import {
   monthKey,
   monthLabel,
   normalizeDate,
+  sortTasks,
   startOfWeek,
   taskEffectiveDate,
   tasksByDateWithinRange,
   todayKey,
   weekDateKeys,
 } from "@/lib/utils";
+import { TrashIcon } from "@/components/financial/TrashIcon";
 
 type PlannerMode = "week" | "month";
 
 interface ViewProps {
   state: AppState;
   updateState: (updater: (prev: AppState) => AppState) => void;
-  initialMode?: PlannerMode;
 }
 
 const parseDateKey = (value: string) => {
@@ -42,15 +43,11 @@ const parseDateKey = (value: string) => {
 const labelForDateKey = (value: string) => formatDateWithWeekday(value) || value;
 const nowMonthLabel = () => monthLabel(new Date());
 
-export const PlannerView = ({
-  state,
-  updateState,
-  initialMode = "week",
-}: ViewProps) => {
+export const PlannerView = ({ state, updateState }: ViewProps) => {
   const weekStart = state.settings.weekStartDay ?? 1;
   const today = todayKey();
 
-  const [mode, setMode] = useState<PlannerMode>(initialMode);
+  const [mode, setMode] = useState<PlannerMode>("week");
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(today);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -58,10 +55,18 @@ export const PlannerView = ({
   const [backlogGoalId, setBacklogGoalId] = useState("");
   const [backlogCategory, setBacklogCategory] = useState("");
   const [backlogDueDate, setBacklogDueDate] = useState("");
-
-  useEffect(() => {
-    setMode(initialMode);
-  }, [initialMode]);
+  const [showUnscheduledOnly, setShowUnscheduledOnly] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [taskEditDraft, setTaskEditDraft] = useState<{
+    title: string;
+    scheduledDate: string;
+    priority: Task["priority"];
+  }>({
+    title: "",
+    scheduledDate: "",
+    priority: "medium",
+  });
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
 
   const normalizedAnchor = useMemo(
     () => normalizeDate(anchorDate),
@@ -115,24 +120,27 @@ export const PlannerView = ({
     return map;
   }, [state.goals]);
 
-  const backlogTasks = useMemo(() => {
-    const list = state.tasks.filter((task) => {
-      const hasSchedule = Boolean(task.scheduledDate) || Boolean(task.scheduledFor);
-      return !hasSchedule;
+  const groupedTasks = useMemo(() => {
+    const scheduled: Record<string, Task[]> = {};
+    const unscheduled: Task[] = [];
+    state.tasks.forEach((task) => {
+      const key = taskEffectiveDate(task);
+      if (key) {
+        if (!scheduled[key]) scheduled[key] = [];
+        scheduled[key].push(task);
+      } else {
+        unscheduled.push(task);
+      }
     });
-    return list.sort((a, b) => {
-      const aDue = a.dueDate ?? "";
-      const bDue = b.dueDate ?? "";
-      if (aDue && bDue) return aDue.localeCompare(bDue);
-      if (aDue) return -1;
-      if (bDue) return 1;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    Object.keys(scheduled).forEach((key) => {
+      scheduled[key] = sortTasks(scheduled[key]);
     });
+    return {
+      scheduled,
+      sortedDates: Object.keys(scheduled).sort(),
+      unscheduled: sortTasks(unscheduled),
+    };
   }, [state.tasks]);
-
-  const backlogCompletedCount = backlogTasks.filter((task) =>
-    isTaskCompleted(task)
-  ).length;
 
   const weeklyReflection = useMemo(
     () =>
@@ -214,7 +222,7 @@ export const PlannerView = ({
     });
   };
 
-  const toggleTaskCompletion = (taskId: string) => {
+  const toggleTaskCompletion = (taskId: string | Task) => {
     updateState((prev) => ({
       ...prev,
       tasks: prev.tasks.map((task) =>
@@ -287,6 +295,7 @@ export const PlannerView = ({
               ...task,
               scheduledFor: undefined,
               scheduledDate: null,
+              dueDate: undefined,
             }
           : task
       ),
@@ -323,32 +332,30 @@ export const PlannerView = ({
     setBacklogDueDate("");
   };
 
-  const updateBacklogTask = (taskId: string, updates: Partial<Task>) => {
-    updateState((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((task) =>
-        task.id === taskId ? { ...task, ...updates } : task
-      ),
-    }));
-  };
-
-  const toggleBacklogTaskCompletion = (taskId: string) => {
-    const task = state.tasks.find((t) => t.id === taskId);
-    if (!task) return;
-    const nextStatus = isTaskCompleted(task) ? "todo" : "done";
-    updateBacklogTask(taskId, { status: nextStatus });
-  };
-
-  const scheduleBacklogTask = (taskId: string) => {
-    if (!selectedDate) return;
-    moveTaskToDate(taskId, selectedDate);
-    updateBacklogTask(taskId, { status: "todo" });
-  };
-
   const handleSelectDate = (dateKey: string, recenter = false) => {
     setSelectedDate(dateKey);
     if (mode === "week" || recenter) {
       setAnchorDate(parseDateKey(dateKey));
+    }
+  };
+
+  const handleTaskDrop = (dateKey: string) => {
+    if (!draggingTaskId) return;
+    moveTaskToDate(draggingTaskId, dateKey);
+    setDraggingTaskId(null);
+  };
+
+  const handleUnscheduledDrop = () => {
+    if (!draggingTaskId) return;
+    moveTaskToBacklog(draggingTaskId);
+    setDraggingTaskId(null);
+  };
+
+  const handleDragStart = (taskId: string, event: DragEvent) => {
+    setDraggingTaskId(taskId);
+    if (event.dataTransfer) {
+      event.dataTransfer.setData("text/plain", taskId);
+      event.dataTransfer.effectAllowed = "move";
     }
   };
 
@@ -412,6 +419,170 @@ export const PlannerView = ({
     }
     return rows;
   }, [calendarEndDate, calendarStartDate, monthStartDate]);
+
+  const startTaskEdit = (task: Task) => {
+    setEditingTaskId(task.id);
+    setTaskEditDraft({
+      title: task.title,
+      scheduledDate: task.scheduledDate ?? task.scheduledFor ?? "",
+      priority: task.priority,
+    });
+  };
+
+  const cancelTaskEdit = () => setEditingTaskId(null);
+
+  const saveTaskEdit = () => {
+    if (!editingTaskId) return;
+    updateState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((task) =>
+        task.id === editingTaskId
+          ? {
+              ...task,
+              title: taskEditDraft.title,
+              priority: taskEditDraft.priority,
+              scheduledDate: taskEditDraft.scheduledDate || null,
+              scheduledFor: taskEditDraft.scheduledDate || undefined,
+            }
+          : task
+      ),
+    }));
+    setEditingTaskId(null);
+  };
+
+  const renderTaskRow = (task: Task) => {
+    const scheduledDate = task.scheduledDate ?? task.scheduledFor ?? "";
+    const isDone = isTaskCompleted(task);
+    const isEditing = editingTaskId === task.id;
+    return (
+      <div
+        key={task.id}
+        className="flex flex-col gap-2 rounded-2xl border border-slate-100 bg-white/60 p-3 transition hover:border-slate-200 hover:bg-white cursor-pointer"
+        draggable
+        onDragStart={(event) => handleDragStart(task.id, event)}
+        onDragEnd={() => setDraggingTaskId(null)}
+      >
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-2 lg:flex-1">
+            <input
+              type="checkbox"
+              checked={isDone}
+              onChange={() => toggleTaskCompletion(task)}
+            />
+            <div className="flex-1">
+              {isEditing ? (
+                <>
+                  <input
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                    value={taskEditDraft.title}
+                    onChange={(e) =>
+                      setTaskEditDraft((prev) => ({ ...prev, title: e.target.value }))
+                    }
+                  />
+                  <select
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                    value={taskEditDraft.priority}
+                    onChange={(e) =>
+                      setTaskEditDraft((prev) => ({
+                        ...prev,
+                        priority: e.target.value as Task["priority"],
+                      }))
+                    }
+                  >
+                    <option value="low">Low priority</option>
+                    <option value="medium">Medium priority</option>
+                    <option value="high">High priority</option>
+                  </select>
+                </>
+              ) : (
+                <>
+                  <p
+                    className={`font-semibold ${
+                      isDone ? "text-emerald-600 line-through" : "text-slate-900"
+                    }`}
+                  >
+                    {task.title}
+                  </p>
+                  {task.goalId && (
+                    <p className="text-xs text-slate-500">
+                      Linked goal: {goalLookup[task.goalId]}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 text-xs sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+            {isEditing ? (
+              <>
+                <input
+                  type="date"
+                  className="rounded-xl border border-slate-200 px-3 py-1 text-sm sm:w-40"
+                  value={taskEditDraft.scheduledDate}
+                  onChange={(e) =>
+                    setTaskEditDraft((prev) => ({
+                      ...prev,
+                      scheduledDate: e.target.value,
+                    }))
+                  }
+                />
+              <button
+                className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white disabled:opacity-50"
+                onClick={saveTaskEdit}
+                disabled={!taskEditDraft.title.trim()}
+              >
+                Save
+              </button>
+              <button
+                className="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600"
+                onClick={cancelTaskEdit}
+              >
+                Cancel
+              </button>
+              </>
+            ) : (
+              <>
+                <input
+                  type="date"
+                  className="rounded-xl border border-slate-200 px-3 py-1 text-sm sm:w-40"
+                  value={scheduledDate}
+                  onChange={(e) => moveTaskToDate(task.id, e.target.value)}
+                />
+                <button
+                  className="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600"
+                  onClick={() => moveTaskToBacklog(task.id)}
+                  disabled={!scheduledDate}
+                >
+                  Unschedule
+                </button>
+                <button
+                  className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white disabled:opacity-50"
+                  onClick={() => moveTaskToDate(task.id, selectedDate)}
+                  disabled={!selectedDate}
+                >
+                  Plan {selectedDayLabel}
+                </button>
+              <button
+                className="rounded-full border border-slate-200 p-2 text-slate-600"
+                onClick={() => startTaskEdit(task)}
+                aria-label="Edit task"
+              >
+                ✏️
+              </button>
+              <button
+                className="rounded-full p-2 text-red-500"
+                onClick={() => deleteTask(task.id)}
+                aria-label="Delete task"
+              >
+                <TrashIcon className="h-4 w-4" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -492,6 +663,11 @@ export const PlannerView = ({
                         : "border-slate-100 hover:border-slate-200"
                     }`}
                     onClick={() => handleSelectDate(dateKey)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      handleTaskDrop(dateKey);
+                    }}
                   >
                     <div className="flex items-center justify-between text-sm font-semibold">
                       <span>{dateKey.split("-")[2]}</span>
@@ -501,26 +677,22 @@ export const PlannerView = ({
                         </span>
                       )}
                     </div>
-                    <div className="mt-2 space-y-1 text-xs text-slate-600">
-                      {dayTasks.slice(0, 3).map((task) => (
-                        <p
-                          key={task.id}
-                          className={`truncate ${
-                            isTaskCompleted(task)
-                              ? "text-emerald-600 line-through"
-                              : ""
-                          }`}
-                        >
-                          {task.title}
-                        </p>
-                      ))}
-                      {dayTasks.length > 3 && (
-                        <p className="text-[10px] text-slate-400">
-                          +{dayTasks.length - 3} more
-                        </p>
-                      )}
-                      {dayTasks.length === 0 && (
+                    <div className="mt-2 max-h-28 space-y-1 overflow-y-auto text-xs text-slate-600">
+                      {dayTasks.length === 0 ? (
                         <p className="text-[10px] text-slate-400">No tasks</p>
+                      ) : (
+                        dayTasks.map((task) => (
+                          <p
+                            key={task.id}
+                            className={`truncate ${
+                              isTaskCompleted(task)
+                                ? "text-emerald-600 line-through"
+                                : ""
+                            }`}
+                          >
+                            {task.title}
+                          </p>
+                        ))
                       )}
                     </div>
                   </button>
@@ -544,6 +716,11 @@ export const PlannerView = ({
                             : "border-slate-100 hover:border-slate-200"
                         } ${day.inMonth ? "" : "opacity-60"}`}
                         onClick={() => handleSelectDate(day.key, !day.inMonth)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          handleTaskDrop(day.key);
+                        }}
                       >
                         <div className="flex items-center justify-between font-semibold">
                           <span>{day.key.split("-")[2]}</span>
@@ -553,26 +730,22 @@ export const PlannerView = ({
                             </span>
                           )}
                         </div>
-                        <div className="mt-2 space-y-1 text-[11px] text-slate-600">
-                          {dayTasks.slice(0, 2).map((task) => (
-                            <p
-                              key={task.id}
-                              className={`truncate ${
-                                isTaskCompleted(task)
-                                  ? "text-emerald-600 line-through"
-                                  : ""
-                              }`}
-                            >
-                              {task.title}
-                            </p>
-                          ))}
-                          {dayTasks.length === 0 && (
+                        <div className="mt-2 max-h-24 space-y-1 overflow-y-auto text-[11px] text-slate-600">
+                          {dayTasks.length === 0 ? (
                             <p className="text-[10px] text-slate-400">No tasks</p>
-                          )}
-                          {dayTasks.length > 2 && (
-                            <p className="text-[10px] text-slate-400">
-                              +{dayTasks.length - 2} more
-                            </p>
+                          ) : (
+                            dayTasks.map((task) => (
+                              <p
+                                key={task.id}
+                                className={`truncate ${
+                                  isTaskCompleted(task)
+                                    ? "text-emerald-600 line-through"
+                                    : ""
+                                }`}
+                              >
+                                {task.title}
+                              </p>
+                            ))
                           )}
                         </div>
                       </button>
@@ -586,164 +759,6 @@ export const PlannerView = ({
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-1">
-          <p className="text-lg font-semibold text-slate-900">
-            {selectedDayLabel}
-          </p>
-          <p className="text-sm text-slate-500">
-            Drop tasks here or pull in backlog items below.
-          </p>
-        </div>
-        <div className="mt-4 space-y-3">
-          {selectedDayTasks.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-              Nothing scheduled for this day yet.
-            </p>
-          ) : (
-            selectedDayTasks.map((task) => {
-              const taskDate = taskEffectiveDate(task) ?? selectedDate;
-              return (
-                <div
-                  key={task.id}
-                  className="flex flex-col gap-3 rounded-2xl border border-slate-100 p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={isTaskCompleted(task)}
-                      onChange={() => toggleTaskCompletion(task.id)}
-                    />
-                    <div className="flex-1">
-                      <p
-                        className={`font-semibold ${
-                          isTaskCompleted(task)
-                            ? "text-emerald-600 line-through"
-                            : "text-slate-900"
-                        }`}
-                      >
-                        {task.title}
-                      </p>
-                      {task.goalId && (
-                        <p className="text-xs text-slate-500">
-                          Linked goal: {goalLookup[task.goalId]}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      className="text-xs font-semibold text-red-500"
-                      onClick={() => deleteTask(task.id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <input
-                      type="date"
-                      className="rounded-2xl border border-slate-200 px-3 py-2 text-sm"
-                      value={taskDate}
-                      onChange={(e) => moveTaskToDate(task.id, e.target.value)}
-                    />
-                    <button
-                      className="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600"
-                      onClick={() => moveTaskToBacklog(task.id)}
-                    >
-                      Move to backlog
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <input
-            className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm"
-            placeholder="Add task for this day…"
-            value={newTaskTitle}
-            onChange={(e) => setNewTaskTitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addTaskForSelectedDay()}
-          />
-          <button
-            className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
-            onClick={addTaskForSelectedDay}
-          >
-            Add task
-          </button>
-        </div>
-      </section>
-
-      {mode === "week" ? (
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-1">
-            <p className="text-lg font-semibold text-slate-900">
-              Weekly intent & top 3
-            </p>
-            <p className="text-sm text-slate-500">
-              Capture the vibe and key moves for this week.
-            </p>
-          </div>
-          <textarea
-            className="mt-4 w-full rounded-2xl border border-slate-200 p-3 text-sm"
-            rows={3}
-            value={weeklyIntent}
-            onChange={(e) => setWeeklyIntent(e.target.value)}
-            placeholder="What’s the intention for this week?"
-          />
-          <div className="mt-4 space-y-3">
-            {weeklyPriorities.map((priority, idx) => (
-              <div key={idx} className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-slate-500">
-                  {idx + 1}.
-                </span>
-                <input
-                  className="flex-1 rounded-2xl border border-slate-200 px-3 py-2 text-sm"
-                  placeholder="e.g., Close out proposal"
-                  value={priority}
-                  onChange={(e) =>
-                    setWeeklyPriorities((prev) => {
-                      const next = [...prev];
-                      next[idx] = e.target.value;
-                      return next;
-                    })
-                  }
-                />
-              </div>
-            ))}
-          </div>
-          <button
-            className="mt-4 w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
-            onClick={saveWeeklyPlan}
-          >
-            Save weekly plan
-          </button>
-        </section>
-      ) : (
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-1">
-            <p className="text-lg font-semibold text-slate-900">
-              Monthly focus
-            </p>
-            <p className="text-sm text-slate-500">
-              Define the theme or milestone for {monthLabelText}.
-            </p>
-          </div>
-          <textarea
-            className="mt-4 w-full rounded-2xl border border-slate-200 p-3 text-sm"
-            rows={4}
-            value={monthlyFocus}
-            onChange={(e) => setMonthlyFocus(e.target.value)}
-            placeholder="Month’s theme, milestone, or metric."
-          />
-          <button
-            className="mt-4 w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
-            onClick={saveMonthlyFocus}
-          >
-            Save monthly focus
-          </button>
-        </section>
-      )}
-
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-2">
           <p className="text-lg font-semibold text-slate-900">Create a Task</p>
           <p className="text-sm text-slate-500">
@@ -753,7 +768,7 @@ export const PlannerView = ({
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <input
             className="rounded-2xl border border-slate-200 px-4 py-3 text-sm md:col-span-2"
-            placeholder="Capture backlog task…"
+            placeholder="Create task…"
             value={backlogTitle}
             onChange={(e) => setBacklogTitle(e.target.value)}
           />
@@ -785,18 +800,16 @@ export const PlannerView = ({
             className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white md:col-span-2"
             onClick={addBacklogTask}
           >
-            Add to Task Backlog
+            Add Task to Schedule
           </button>
         </div>
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-1">
-          <p className="text-lg font-semibold text-slate-900">
-            All Tasks
-          </p>
+          <p className="text-lg font-semibold text-slate-900">All tasks</p>
           <p className="text-sm text-slate-500">
-            Review unscheduled tasks and drop them onto {selectedDayLabel}.
+            Review every task, grouped by the day it&apos;s planned for.
           </p>
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -805,109 +818,90 @@ export const PlannerView = ({
               Total tasks
             </p>
             <p className="text-3xl font-semibold text-slate-900">
-              {backlogTasks.length}
+              {state.tasks.length}
             </p>
           </div>
           <div className="rounded-2xl bg-slate-50 p-4 text-center">
             <p className="text-xs uppercase tracking-wide text-slate-500">
-              Completed
+              Unscheduled
             </p>
             <p className="text-3xl font-semibold text-slate-900">
-              {backlogCompletedCount}
+              {groupedTasks.unscheduled.length}
             </p>
           </div>
         </div>
-
-        <div className="mt-6 space-y-3">
-          {backlogTasks.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-              Nothing in the backlog yet. Capture a few above.
-            </p>
-          ) : (
-            backlogTasks.map((task) => {
-              const isDone = isTaskCompleted(task);
+        <div className="mt-4 flex justify-end">
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
+            <input
+              type="checkbox"
+              checked={showUnscheduledOnly}
+              onChange={(e) => setShowUnscheduledOnly(e.target.checked)}
+            />
+            Show only unscheduled tasks
+          </label>
+        </div>
+        <div className="mt-6 space-y-4">
+          {!showUnscheduledOnly &&
+            groupedTasks.sortedDates.map((dateKey) => {
+              const dayTasks = groupedTasks.scheduled[dateKey] ?? [];
+              if (dayTasks.length === 0) return null;
               return (
                 <div
-                  key={task.id}
-                  className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between"
+                  key={dateKey}
+                  className="rounded-2xl border border-slate-200 bg-white p-4"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    handleTaskDrop(dateKey);
+                  }}
                 >
-                  <div>
-                    <p
-                      className={`font-semibold ${
-                        isDone ? "text-emerald-600 line-through" : "text-slate-900"
-                      }`}
-                    >
-                      {task.title}
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {formatDateWithWeekday(dateKey)}
                     </p>
-                    <p className="text-xs text-slate-500">
-                      {task.dueDate ? `Due ${task.dueDate}` : "No due date"}
-                    </p>
-                    {task.goalId && (
-                      <p className="text-xs text-slate-500">
-                        Linked goal: {goalLookup[task.goalId]}
-                      </p>
-                    )}
-                    {task.backlogCategory && (
-                      <p className="text-xs text-slate-500">
-                        Area: {task.backlogCategory}
-                      </p>
-                    )}
+                    <span className="text-xs text-slate-500">
+                      {dayTasks.length} {dayTasks.length === 1 ? "task" : "tasks"}
+                    </span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <input
-                      type="date"
-                      className="rounded-xl border border-slate-200 px-3 py-1 text-sm"
-                      value={task.dueDate ?? ""}
-                      onChange={(e) =>
-                        updateBacklogTask(task.id, {
-                          dueDate: e.target.value || undefined,
-                          month: e.target.value
-                            ? monthLabel(new Date(e.target.value))
-                            : task.month ?? nowMonthLabel(),
-                        })
-                      }
-                    />
-                    <select
-                      className="rounded-xl border border-slate-200 px-3 py-1 text-sm"
-                      value={task.goalId ?? ""}
-                      onChange={(e) =>
-                        updateBacklogTask(task.id, { goalId: e.target.value || undefined })
-                      }
-                    >
-                      <option value="">Goal link</option>
-                      {state.goals.map((goal) => (
-                        <option key={goal.id} value={goal.id}>
-                          {goal.title}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      className={`rounded-full px-3 py-1 font-semibold ${
-                        isDone
-                          ? "bg-slate-200 text-slate-700"
-                          : "bg-emerald-100 text-emerald-700"
-                      }`}
-                      onClick={() => toggleBacklogTaskCompletion(task.id)}
-                    >
-                      {isDone ? "Mark pending" : "Mark done"}
-                    </button>
-                    <button
-                      className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white disabled:opacity-50"
-                      onClick={() => scheduleBacklogTask(task.id)}
-                      disabled={isDone || !selectedDate}
-                    >
-                      Schedule {selectedDayLabel}
-                    </button>
-                    <button
-                      className="rounded-full px-3 py-1 font-semibold text-red-500"
-                      onClick={() => deleteTask(task.id)}
-                    >
-                      Delete
-                    </button>
+                  <div className="mt-3 space-y-2">
+                    {dayTasks.map((task) => renderTaskRow(task))}
                   </div>
                 </div>
               );
-            })
+            })}
+          {(groupedTasks.unscheduled.length > 0 || showUnscheduledOnly) && (
+            <div
+              className="rounded-2xl border border-slate-200 bg-white p-4"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleUnscheduledDrop();
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-900">
+                  Unscheduled tasks
+                </p>
+                <span className="text-xs text-slate-500">
+                  {groupedTasks.unscheduled.length}{" "}
+                  {groupedTasks.unscheduled.length === 1 ? "task" : "tasks"}
+                </span>
+              </div>
+              {groupedTasks.unscheduled.length === 0 ? (
+                <p className="mt-3 text-sm text-slate-500">
+                  No unscheduled tasks right now.
+                </p>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {groupedTasks.unscheduled.map((task) => renderTaskRow(task))}
+                </div>
+              )}
+            </div>
+          )}
+          {state.tasks.length === 0 && (
+            <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+              No tasks captured yet. Start by logging one above.
+            </p>
           )}
         </div>
       </section>

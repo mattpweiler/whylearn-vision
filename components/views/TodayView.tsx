@@ -725,8 +725,6 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
           )}
         </div>
       </section>
-
-      {/* Life areas snapshot removed per latest UX iteration */}
     </div>
   );
 };

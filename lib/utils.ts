@@ -41,13 +41,23 @@ const parseLocalDateValue = (value: string) => {
   return new Date(year, month - 1, day);
 };
 
+const parseFlexibleDateValue = (value: string) => {
+  if (!value) return null;
+  if (value.includes("T")) {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return parseLocalDateValue(value);
+};
+
 export const formatDisplayDate = (value?: string) => {
   if (!value) return "";
-  const date = parseLocalDateValue(value);
+  const date = parseFlexibleDateValue(value);
   if (!date) return value;
   return date.toLocaleDateString(undefined, {
-    month: "short",
+    month: "numeric",
     day: "numeric",
+    year: "numeric",
   });
 };
 

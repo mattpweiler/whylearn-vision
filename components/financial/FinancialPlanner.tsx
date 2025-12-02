@@ -43,6 +43,7 @@ import {
 import { generateItemId } from "@/components/financial/utils";
 import { useSupabase } from "@/components/providers/SupabaseProvider";
 import { useFinancialRecords } from "@/components/financial/useFinancialRecords";
+import { TrashIcon } from "@/components/financial/TrashIcon";
 
 const PageSection = ({ children }: { children: ReactNode }) => (
   <section className="space-y-6">{children}</section>
@@ -605,10 +606,11 @@ const MonthlyStatementsSection = ({
                   </p>
                   <button
                     type="button"
-                    className="text-sm text-slate-400 transition hover:text-rose-500"
+                    className="rounded-full p-2 text-rose-500 transition hover:bg-rose-50"
                     onClick={() => removeStatement(statement.id)}
+                    aria-label="Delete monthly statement"
                   >
-                    Remove
+                    <TrashIcon className="h-4 w-4" />
                   </button>
                 </div>
               </div>

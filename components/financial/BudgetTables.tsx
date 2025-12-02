@@ -8,6 +8,7 @@ import {
   LiabilityItem,
 } from "./types";
 import { formatCurrency, generateItemId, parseAmountInput } from "./utils";
+import { TrashIcon } from "@/components/financial/TrashIcon";
 
 interface BudgetTableProps<T extends FinancialItem> {
   title: string;
@@ -102,10 +103,11 @@ const BudgetTable = <T extends FinancialItem>({
               />
               <button
                 type="button"
-                className="text-sm text-slate-500 transition hover:text-rose-500"
+                className="rounded-full p-2 text-rose-500 transition hover:bg-rose-50"
                 onClick={() => handleDelete(item.id)}
+                aria-label={`Remove ${title} entry`}
               >
-                Remove
+                <TrashIcon className="h-4 w-4" />
               </button>
             </div>
           </div>

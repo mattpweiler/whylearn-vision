@@ -12,7 +12,7 @@ export default function CheckEmailPage() {
         </h1>
         <p className="mt-3 text-sm text-slate-500">
           We just sent you a verification link. Open your inbox and confirm your
-          email to unlock your Vision workspace.
+          email to unlock your Vision workspace. The email may take a few minutes to send.
         </p>
         <div className="mt-8 space-y-3">
           <Link

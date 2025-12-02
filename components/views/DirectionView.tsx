@@ -4,6 +4,25 @@ import { useMemo, useState } from "react";
 import { AppState } from "@/lib/types";
 import { formatDisplayDate, generateId, todayKey } from "@/lib/utils";
 
+const TrashIcon = ({ className = "" }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M3 6h18" />
+    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+    <path d="M5 6l1.5 14A2 2 0 0 0 8.5 22h7a2 2 0 0 0 2-1.75L19 6" />
+  </svg>
+);
+
 interface ViewProps {
   state: AppState;
   updateState: (updater: (prev: AppState) => AppState) => void;
@@ -114,6 +133,13 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
     setEditingReflectionId(null);
   };
 
+  const deleteReflection = (reflectionId: string) => {
+    updateState((prev) => ({
+      ...prev,
+      reflections: prev.reflections.filter((reflection) => reflection.id !== reflectionId),
+    }));
+  };
+
   const addReflection = () => {
     if (!reflectionNote.trim()) return;
     updateState((prev) => ({
@@ -192,27 +218,46 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
                   key={reflection.id}
                   className="rounded-2xl border border-slate-100 p-4"
                 >
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between text-left transition-colors hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => toggleReflectionExpansion(reflection.id)}
-                  >
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-slate-500">
-                        {reflection.type}
-                      </p>
-                      <p className="text-sm font-medium text-slate-700">
-                        {summary}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        {formatDisplayDate(reflection.createdAt)}
-                      </p>
+                  <div className="flex items-start gap-3">
+                    <button
+                      type="button"
+                      className="flex-1 text-left transition-colors hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => toggleReflectionExpansion(reflection.id)}
+                    >
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-slate-500">
+                          {reflection.type}
+                        </p>
+                        <p className="text-sm font-medium text-slate-700">
+                          {summary}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          {formatDisplayDate(reflection.createdAt)}
+                        </p>
+                      </div>
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="rounded-full border border-slate-200 p-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => toggleReflectionExpansion(reflection.id)}
+                        aria-label={isExpanded ? "Collapse reflection" : "Expand reflection"}
+                      >
+                        {isExpanded ? "−" : "+"}
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-full p-2 text-rose-500 transition hover:bg-rose-50"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => deleteReflection(reflection.id)}
+                        aria-label="Delete reflection"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
                     </div>
-                    <span className="text-slate-400">
-                      {isExpanded ? "−" : "+"}
-                    </span>
-                  </button>
+                  </div>
                   {isExpanded ? (
                     <div className="mt-3 space-y-3 border-t border-slate-100 pt-3 text-sm text-slate-700">
                       {isEditing ? (

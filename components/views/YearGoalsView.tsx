@@ -84,6 +84,7 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
     };
     updateState((prev) => ({ ...prev, goals: [goal, ...prev.goals] }));
     setForm(defaultGoal());
+    setShowNewGoalForm(false);
   };
 
   const deleteGoal = (goalId: string) => {
