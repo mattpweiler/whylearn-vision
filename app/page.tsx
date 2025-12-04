@@ -44,12 +44,12 @@ export default function LandingPage() {
           Personal operating system
         </p>
         <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-          Bring your goals, habits, reflections, and AI mentor into one
-          accountable space.
+          Attain goals, build habits, and excel with your AI mentor.
         </h1>
         <p className="mt-6 max-w-2xl text-base text-slate-600 sm:text-lg">
-          Build clarity around life areas, stay close to the work that matters,
-          and review your traction weekly. Explore the live demo or sign in to
+          Build the life you want, track your progress, and let the WhyLearn AI mentor be your guide. 
+          
+          Explore the live demo or sign in to
           sync your personal workspace powered by Supabase.
         </p>
         <div className="mt-10 flex flex-col gap-4 sm:flex-row">

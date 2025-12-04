@@ -46,6 +46,7 @@ const nowMonthLabel = () => monthLabel(new Date());
 export const PlannerView = ({ state, updateState }: ViewProps) => {
   const weekStart = state.settings.weekStartDay ?? 1;
   const today = todayKey();
+  const todayDateKey = today;
 
   const [mode, setMode] = useState<PlannerMode>("week");
   const [anchorDate, setAnchorDate] = useState(() => new Date());
@@ -68,6 +69,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
   });
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [expandedPastDates, setExpandedPastDates] = useState<Record<string, boolean>>({});
 
   const normalizedAnchor = useMemo(
     () => normalizeDate(anchorDate),
@@ -203,6 +205,76 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     }));
   };
 
+  const UNSCHEDULED_BUCKET = "__unscheduled";
+
+  const bucketKeyForTask = (task: Task) =>
+    taskEffectiveDate(task) ?? UNSCHEDULED_BUCKET;
+
+  const reorderTaskRelative = (sourceId: string, targetTask: Task) => {
+    updateState((prev) => {
+      const source = prev.tasks.find((task) => task.id === sourceId);
+      const target = prev.tasks.find((task) => task.id === targetTask.id);
+      if (!source || !target) return prev;
+      const sourceBucket = bucketKeyForTask(source);
+      const targetBucket = bucketKeyForTask(target);
+
+      const targetBucketTasks = prev.tasks
+        .filter((task) => bucketKeyForTask(task) === targetBucket && task.id !== sourceId)
+        .sort((a, b) => a.orderIndex - b.orderIndex);
+      const targetIndex = targetBucketTasks.findIndex((task) => task.id === targetTask.id);
+      targetBucketTasks.splice(
+        targetIndex >= 0 ? targetIndex : targetBucketTasks.length,
+        0,
+        source
+      );
+      const targetOrder = targetBucketTasks.map((task, index) => ({
+        id: task.id,
+        orderIndex: index + 1,
+      }));
+
+      const sourceOrder =
+        sourceBucket !== targetBucket
+          ? prev.tasks
+              .filter(
+                (task) => bucketKeyForTask(task) === sourceBucket && task.id !== sourceId
+              )
+              .sort((a, b) => a.orderIndex - b.orderIndex)
+              .map((task, index) => ({ id: task.id, orderIndex: index + 1 }))
+          : [];
+
+      const targetDateValue =
+        targetBucket === UNSCHEDULED_BUCKET ? null : targetBucket;
+
+      return {
+        ...prev,
+        tasks: prev.tasks.map((task) => {
+          if (task.id === sourceId) {
+            const targetOrderRecord = targetOrder.find((item) => item.id === task.id);
+            return {
+              ...task,
+              scheduledDate: targetDateValue,
+              scheduledFor: targetDateValue ?? undefined,
+              month:
+                targetDateValue && targetDateValue !== UNSCHEDULED_BUCKET
+                  ? monthLabel(parseDateKey(targetDateValue))
+                  : task.month,
+              orderIndex: targetOrderRecord?.orderIndex ?? task.orderIndex,
+            };
+          }
+          if (targetOrder.some((item) => item.id === task.id)) {
+            const record = targetOrder.find((item) => item.id === task.id);
+            return { ...task, orderIndex: record?.orderIndex ?? task.orderIndex };
+          }
+          if (sourceOrder.some((item) => item.id === task.id)) {
+            const record = sourceOrder.find((item) => item.id === task.id);
+            return { ...task, orderIndex: record?.orderIndex ?? task.orderIndex };
+          }
+          return task;
+        }),
+      };
+    });
+  };
+
   const moveTaskToDate = (taskId: string, dateKey: string) => {
     if (!dateKey) return;
     const monthTag = monthLabel(parseDateKey(dateKey));
@@ -324,6 +396,19 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     }
   };
 
+  const togglePastDateSection = (dateKey: string) => {
+    setExpandedPastDates((prev) => ({
+      ...prev,
+      [dateKey]: !prev[dateKey],
+    }));
+  };
+
+  const handleTaskRowDrop = (targetTask: Task) => {
+    if (!draggingTaskId || draggingTaskId === targetTask.id) return;
+    reorderTaskRelative(draggingTaskId, targetTask);
+    setDraggingTaskId(null);
+  };
+
   const goToToday = () => {
     const now = new Date();
     setAnchorDate(now);
@@ -426,6 +511,11 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
         draggable
         onDragStart={(event) => handleDragStart(task.id, event)}
         onDragEnd={() => setDraggingTaskId(null)}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          handleTaskRowDrop(task);
+        }}
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-start gap-2 lg:flex-1">
@@ -773,6 +863,8 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
             groupedTasks.sortedDates.map((dateKey) => {
               const dayTasks = groupedTasks.scheduled[dateKey] ?? [];
               if (dayTasks.length === 0) return null;
+              const isPast = dateKey < todayDateKey;
+              const isExpanded = !isPast || expandedPastDates[dateKey];
               return (
                 <div
                   key={dateKey}
@@ -784,16 +876,27 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                   }}
                 >
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-900">
+                    <button
+                      className="text-left text-sm font-semibold text-slate-900"
+                      onClick={() => isPast && togglePastDateSection(dateKey)}
+                      disabled={!isPast}
+                    >
                       {formatDateWithWeekday(dateKey)}
-                    </p>
+                      {isPast && (
+                        <span className="ml-2 text-xs text-slate-500">
+                          {isExpanded ? "Hide" : "Show"}
+                        </span>
+                      )}
+                    </button>
                     <span className="text-xs text-slate-500">
                       {dayTasks.length} {dayTasks.length === 1 ? "task" : "tasks"}
                     </span>
                   </div>
-                  <div className="mt-3 space-y-2">
-                    {dayTasks.map((task) => renderTaskRow(task))}
-                  </div>
+                  {isExpanded && (
+                    <div className="mt-3 space-y-2">
+                      {dayTasks.map((task) => renderTaskRow(task))}
+                    </div>
+                  )}
                 </div>
               );
             })}
