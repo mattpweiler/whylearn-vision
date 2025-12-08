@@ -185,10 +185,11 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
   }, [monthlyReflection]);
 
   const toggleTaskCompletion = (taskId: string | Task) => {
+    const targetId = typeof taskId === "string" ? taskId : taskId.id;
     updateState((prev) => ({
       ...prev,
       tasks: prev.tasks.map((task) =>
-        task.id === taskId
+        task.id === targetId
           ? {
               ...task,
               status: isTaskCompleted(task) ? "todo" : "done",

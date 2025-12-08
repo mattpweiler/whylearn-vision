@@ -33,6 +33,7 @@ import {
   SETTINGS_STORAGE_KEY,
   STATEMENTS_STORAGE_KEY,
   MonthlyStatement,
+  StatementLineItem,
 } from "@/components/financial/types";
 import { usePersistentState } from "@/lib/hooks/usePersistentState";
 import {
@@ -330,6 +331,19 @@ interface MonthlyStatementsSectionProps {
   onChange: (next: MonthlyStatement[]) => void;
 }
 
+const sumItems = (items: StatementLineItem[] = []) =>
+  items.reduce((total, item) => total + (item.amount || 0), 0);
+
+const incomeValue = (statement: MonthlyStatement) =>
+  statement.incomeItems?.length
+    ? sumItems(statement.incomeItems)
+    : statement.income ?? 0;
+
+const expenseValue = (statement: MonthlyStatement) =>
+  statement.expenseItems?.length
+    ? sumItems(statement.expenseItems)
+    : statement.expenses ?? 0;
+
 const MonthlyStatementsSection = ({
   statements,
   onChange,
@@ -356,9 +370,9 @@ const MonthlyStatementsSection = ({
     .map((statement) => ({
       month: statement.month,
       label: formatMonthLabel(statement.month),
-      income: statement.income ?? 0,
-      expenses: statement.expenses ?? 0,
-      profit: (statement.income ?? 0) - (statement.expenses ?? 0),
+      income: incomeValue(statement),
+      expenses: expenseValue(statement),
+      profit: incomeValue(statement) - expenseValue(statement),
     }));
 
   const handleFieldChange = (
@@ -408,8 +422,72 @@ const MonthlyStatementsSection = ({
         income: 0,
         expenses: 0,
         notes: "",
+        incomeItems: [],
+        expenseItems: [],
       },
     ]);
+  };
+
+  const updateStatementItems = (
+    statementId: string,
+    type: StatementLineItem["type"],
+    updater: (prev: StatementLineItem[]) => StatementLineItem[]
+  ) => {
+    onChange(
+      statements.map((statement) => {
+        if (statement.id !== statementId) return statement;
+        const key = type === "income" ? "incomeItems" : "expenseItems";
+        const nextItems = updater((statement[key] as StatementLineItem[]) ?? []);
+        const nextIncome =
+          type === "income" ? sumItems(nextItems) : incomeValue(statement);
+        const nextExpenses =
+          type === "expense" ? sumItems(nextItems) : expenseValue(statement);
+        return {
+          ...statement,
+          [key]: nextItems,
+          income: nextIncome,
+          expenses: nextExpenses,
+        };
+      })
+    );
+  };
+
+  const addStatementItem = (
+    statementId: string,
+    type: StatementLineItem["type"]
+  ) => {
+    updateStatementItems(statementId, type, (prev) => [
+      ...prev,
+      {
+        id: generateItemId(),
+        description: type === "income" ? "New income" : "New expense",
+        amount: 0,
+        type,
+      },
+    ]);
+  };
+
+  const updateStatementItem = (
+    statementId: string,
+    itemId: string,
+    type: StatementLineItem["type"],
+    updates: Partial<StatementLineItem>
+  ) => {
+    updateStatementItems(statementId, type, (prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, ...updates, type: item.type } : item
+      )
+    );
+  };
+
+  const removeStatementItem = (
+    statementId: string,
+    itemId: string,
+    type: StatementLineItem["type"]
+  ) => {
+    updateStatementItems(statementId, type, (prev) =>
+      prev.filter((item) => item.id !== itemId)
+    );
   };
 
   return (
@@ -531,7 +609,11 @@ const MonthlyStatementsSection = ({
 
         <div className="space-y-4">
           {sorted.map((statement) => {
-            const netProfit = (statement.income ?? 0) - (statement.expenses ?? 0);
+            const incomeItems = statement.incomeItems ?? [];
+            const expenseItems = statement.expenseItems ?? [];
+            const computedIncome = incomeValue(statement);
+            const computedExpenses = expenseValue(statement);
+            const netProfit = computedIncome - computedExpenses;
             const noteDraft = noteDrafts[statement.id] ?? "";
             return (
               <div
@@ -558,8 +640,8 @@ const MonthlyStatementsSection = ({
                       type="number"
                       className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
                       value={
-                        Number.isFinite(statement.income) && statement.income !== 0
-                          ? statement.income
+                        Number.isFinite(computedIncome) && computedIncome !== 0
+                          ? computedIncome
                           : ""
                       }
                       onChange={(event) =>
@@ -575,9 +657,9 @@ const MonthlyStatementsSection = ({
                       type="number"
                       className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
                       value={
-                        Number.isFinite(statement.expenses) &&
-                        statement.expenses !== 0
-                          ? statement.expenses
+                        Number.isFinite(computedExpenses) &&
+                        computedExpenses !== 0
+                          ? computedExpenses
                           : ""
                       }
                       onChange={(event) =>
@@ -603,6 +685,162 @@ const MonthlyStatementsSection = ({
                       placeholder="Break down key expenses, assumptions, or one-off items for this month."
                     />
                   </label>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2 rounded-xl border border-slate-200 bg-white/60 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Income items
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Auto-summed into income
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-emerald-700">
+                          {formatCurrency(computedIncome)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => addStatementItem(statement.id, "income")}
+                          className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                        >
+                          + Add income
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {incomeItems.length > 0 ? (
+                        incomeItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className="grid grid-cols-[1fr_110px_auto] items-center gap-2"
+                          >
+                            <input
+                              type="text"
+                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                              value={item.description}
+                              onChange={(event) =>
+                                updateStatementItem(
+                                  statement.id,
+                                  item.id,
+                                  "income",
+                                  { description: event.target.value }
+                                )
+                              }
+                              placeholder="Income source"
+                            />
+                            <input
+                              type="number"
+                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                              value={Number.isFinite(item.amount) ? item.amount : ""}
+                              onChange={(event) =>
+                                updateStatementItem(
+                                  statement.id,
+                                  item.id,
+                                  "income",
+                                  { amount: Number(event.target.value) || 0 }
+                                )
+                              }
+                              placeholder="$"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeStatementItem(statement.id, item.id, "income")
+                              }
+                              className="rounded-lg p-2 text-rose-500 transition hover:bg-rose-50"
+                              aria-label="Delete income item"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                          No income line items yet. Add one to break down this month.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2 rounded-xl border border-slate-200 bg-white/60 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Expense items
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Auto-summed into expenses
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-rose-600">
+                          {formatCurrency(computedExpenses)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => addStatementItem(statement.id, "expense")}
+                          className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                        >
+                          + Add expense
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {expenseItems.length > 0 ? (
+                        expenseItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className="grid grid-cols-[1fr_110px_auto] items-center gap-2"
+                          >
+                            <input
+                              type="text"
+                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                              value={item.description}
+                              onChange={(event) =>
+                                updateStatementItem(
+                                  statement.id,
+                                  item.id,
+                                  "expense",
+                                  { description: event.target.value }
+                                )
+                              }
+                              placeholder="Expense item"
+                            />
+                            <input
+                              type="number"
+                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                              value={Number.isFinite(item.amount) ? item.amount : ""}
+                              onChange={(event) =>
+                                updateStatementItem(
+                                  statement.id,
+                                  item.id,
+                                  "expense",
+                                  { amount: Number(event.target.value) || 0 }
+                                )
+                              }
+                              placeholder="$"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeStatementItem(statement.id, item.id, "expense")
+                              }
+                              className="rounded-lg p-2 text-rose-500 transition hover:bg-rose-50"
+                              aria-label="Delete expense item"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                          No expense line items yet. Add one to track this month's spend.
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-3 text-sm text-slate-600">
                   <p>

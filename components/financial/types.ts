@@ -28,12 +28,23 @@ export interface LiabilityItem {
   amount: number;
 }
 
+export type StatementLineItemType = "income" | "expense";
+
+export interface StatementLineItem {
+  id: string;
+  description: string;
+  amount: number;
+  type: StatementLineItemType;
+}
+
 export interface MonthlyStatement {
   id: string;
   month: string; // YYYY-MM
   income: number;
   expenses: number;
   notes?: string;
+  incomeItems?: StatementLineItem[];
+  expenseItems?: StatementLineItem[];
 }
 
 export type FinancialItem =

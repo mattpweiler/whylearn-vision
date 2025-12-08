@@ -11,6 +11,7 @@ import {
   IncomeItem,
   LiabilityItem,
   MonthlyStatement,
+  StatementLineItem,
 } from "@/components/financial/types";
 
 type ItemSetter<T> = (next: T[]) => void;
@@ -27,6 +28,17 @@ const mapCollection = <T extends FinancialItem>(rows?: Record<string, unknown>[]
     amount: mapNumeric(row.amount as number | string | null | undefined),
   })) as T[];
 
+const mapStatementItems = (rows?: Record<string, unknown>[], fallbackType?: string) =>
+  (rows ?? []).map((row) => ({
+    id: String(row.id ?? row.temp_id ?? crypto.randomUUID()),
+    description: (row.description as string) ?? "",
+    amount: mapNumeric(row.amount as number | string | null | undefined),
+    type:
+      row.type === "income" || row.type === "expense"
+        ? (row.type as StatementLineItem["type"])
+        : (fallbackType ?? "income"),
+  })) as StatementLineItem[];
+
 const mapStatements = (rows?: Record<string, unknown>[]) =>
   (rows ?? []).map((row) => ({
     id: String(row.id),
@@ -36,6 +48,14 @@ const mapStatements = (rows?: Record<string, unknown>[]) =>
       row.actual_expenses as number | string | null | undefined
     ),
     notes: (row.notes as string) ?? "",
+    incomeItems: mapStatementItems(
+      row.income_items as Record<string, unknown>[] | undefined,
+      "income"
+    ),
+    expenseItems: mapStatementItems(
+      row.expense_items as Record<string, unknown>[] | undefined,
+      "expense"
+    ),
   })) as MonthlyStatement[];
 
 interface UseFinancialRecordsResult {
@@ -114,7 +134,7 @@ export const useFinancialRecords = (enabled: boolean): UseFinancialRecordsResult
           supabase
             .from("financial_monthly_statements")
             .select(
-              "id, statement_month, actual_income, actual_expenses, notes"
+              "id, statement_month, actual_income, actual_expenses, notes, income_items, expense_items"
             )
             .eq("user_id", userId)
             .order("statement_month", { ascending: true }),
@@ -235,6 +255,8 @@ export const useFinancialRecords = (enabled: boolean): UseFinancialRecordsResult
             actual_income: statement.income ?? 0,
             actual_expenses: statement.expenses ?? 0,
             notes: statement.notes ?? null,
+            income_items: statement.incomeItems ?? [],
+            expense_items: statement.expenseItems ?? [],
           }))
         );
       }
