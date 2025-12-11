@@ -76,7 +76,8 @@ const syncFromStripeSubscription = async (
         ? subscription.customer
         : subscription.customer?.id ?? null,
     stripeSubscriptionId: subscription.id,
-    status: subscription.status,
+    // Treat cancel_at_period_end as effectively cancelled for access purposes.
+    status: subscription.cancel_at_period_end ? "canceled" : subscription.status,
     priceId: subscription.items.data?.[0]?.price?.id ?? null,
     currentPeriodEnd: subscription.current_period_end,
   });

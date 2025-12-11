@@ -22,6 +22,8 @@ const viewOptions: { key: ViewKey; label: string }[] = [
 export const SettingsView = ({ state, updateState }: ViewProps) => {
   const [profileDraft, setProfileDraft] = useState(state.profile);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isBillingLoading, setIsBillingLoading] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
 
   const saveProfile = () => {
     updateState((prev) => ({ ...prev, profile: profileDraft }));
@@ -51,6 +53,30 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
       console.error(err);
       alert("Unable to delete account right now. Please try again later.");
       setIsDeleting(false);
+    }
+  };
+
+  const openBillingPortal = async () => {
+    setBillingError(null);
+    setIsBillingLoading(true);
+    try {
+      const response = await fetch("/api/stripe/create-portal", {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error ?? "Unable to open billing portal.");
+      }
+      const { url } = (await response.json()) as { url: string };
+      window.location.assign(url);
+    } catch (err) {
+      console.error("Billing portal open failed", err);
+      setBillingError(
+        err instanceof Error
+          ? err.message
+          : "Unable to open billing portal right now."
+      );
+      setIsBillingLoading(false);
     }
   };
 
@@ -165,6 +191,35 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
           </div>
         </section>
       </div>
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-lg font-semibold text-slate-900">Billing</p>
+        <p className="mt-2 text-sm text-slate-600">
+          Manage your subscription or cancel anytime through the Stripe billing
+          portal.
+        </p>
+        {billingError ? (
+          <p className="mt-3 text-sm text-red-600" role="alert">
+            {billingError}
+          </p>
+        ) : null}
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-900/90 disabled:cursor-not-allowed disabled:opacity-70"
+            onClick={openBillingPortal}
+            disabled={isBillingLoading}
+          >
+            {isBillingLoading ? "Opening portal…" : "Open billing portal"}
+          </button>
+          <a
+            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5"
+            href="/paywall"
+            target="_blank"
+            rel="noreferrer"
+          >
+            View paywall
+          </a>
+        </div>
+      </section>
     </div>
   );
 };

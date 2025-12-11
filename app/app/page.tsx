@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppExperience } from "@/components/AppExperience";
 import { AppStateProvider } from "@/components/AppStateProvider";
 import { useSupabase } from "@/components/providers/SupabaseProvider";
+import { isSubscriptionActive } from "@/lib/stripe/utils";
 
 export default function AppWorkspacePage() {
   const { session, isLoading, supabase } = useSupabase();
@@ -16,7 +17,26 @@ export default function AppWorkspacePage() {
     }
   }, [isLoading, session, router]);
 
-  console.log(isLoading, session);
+  useEffect(() => {
+    const validateSubscription = async () => {
+      if (!session) return;
+      try {
+        const response = await fetch("/api/stripe/subscription");
+        if (!response.ok) return;
+        const payload = (await response.json()) as {
+          subscription: { status?: string | null } | null;
+          isActive: boolean;
+        };
+        if (!payload.isActive && !isSubscriptionActive(payload.subscription?.status)) {
+          router.replace("/paywall");
+        }
+      } catch (err) {
+        console.error("Subscription check failed", err);
+      }
+    };
+    void validateSubscription();
+  }, [router, session]);
+
   if (isLoading || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-600">
@@ -24,8 +44,6 @@ export default function AppWorkspacePage() {
       </div>
     );
   }
-
-  console.log(isLoading, session);
 
   return (
     <AppStateProvider

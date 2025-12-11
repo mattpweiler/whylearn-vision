@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSupabase } from "@/components/providers/SupabaseProvider";
@@ -25,7 +25,7 @@ const featureList = [
   "Secure Supabase sync for your workspace",
 ];
 
-export default function PaywallPage() {
+const PaywallContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { session, isLoading: isAuthLoading } = useSupabase();
@@ -244,5 +244,13 @@ export default function PaywallPage() {
         </div>
       </div>
     </div>
+  );
+};
+
+export default function PaywallPage() {
+  return (
+    <Suspense fallback={null}>
+      <PaywallContent />
+    </Suspense>
   );
 }
