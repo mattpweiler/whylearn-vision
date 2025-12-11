@@ -1,19 +1,23 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { isSubscriptionActive } from "@/lib/stripe/utils";
 
-const PROTECTED_PATHS = ["/app"];
 const AUTH_PATHS = ["/auth/sign-in", "/auth/sign-up"];
+const SESSION_REQUIRED_PATHS = ["/app", "/paywall"];
+const SUBSCRIPTION_REQUIRED_PATHS = ["/app"];
 
 const isPathMatch = (pathname: string, paths: string[]) =>
-  paths.some(
-    (base) => pathname === base || pathname.startsWith(`${base}/`)
-  );
+  paths.some((base) => pathname === base || pathname.startsWith(`${base}/`));
 
 const createMiddlewareClient = (request: NextRequest, response: NextResponse) =>
   createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+    process.env.NEXT_PUBLIC_SUPABASE_URL ??
+      process.env.SUPABASE_URL ??
+      "",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+      process.env.SUPABASE_ANON_KEY ??
+      "",
     {
       cookies: {
         get(name: string) {
@@ -34,12 +38,31 @@ const createMiddlewareClient = (request: NextRequest, response: NextResponse) =>
     }
   );
 
+const fetchSubscriptionStatus = async (
+  supabase: ReturnType<typeof createMiddlewareClient>,
+  userId: string
+) => {
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .select("status")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Subscription lookup failed in middleware", error);
+    return null;
+  }
+  return data?.status ?? null;
+};
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const requiresAuth = isPathMatch(pathname, PROTECTED_PATHS);
+  const requiresSession = isPathMatch(pathname, SESSION_REQUIRED_PATHS);
+  const requiresSubscription = isPathMatch(pathname, SUBSCRIPTION_REQUIRED_PATHS);
   const isAuthPage = isPathMatch(pathname, AUTH_PATHS);
+  const isPaywall = pathname === "/paywall" || pathname.startsWith("/paywall/");
 
-  if (!requiresAuth && !isAuthPage) {
+  if (!requiresSession && !isAuthPage) {
     return NextResponse.next();
   }
 
@@ -49,7 +72,7 @@ export async function middleware(request: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (!session && requiresAuth) {
+  if (!session && requiresSession) {
     const redirectUrl = new URL("/auth/sign-in", request.url);
     redirectUrl.searchParams.set(
       "redirectTo",
@@ -58,13 +81,37 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl, { status: 302 });
   }
 
+  const subscriptionStatus =
+    session && (requiresSubscription || isAuthPage || isPaywall)
+      ? await fetchSubscriptionStatus(supabase, session.user.id)
+      : null;
+
+  if (session && isPaywall && isSubscriptionActive(subscriptionStatus)) {
+    const redirectTarget = request.nextUrl.searchParams.get("redirectTo");
+    const target =
+      redirectTarget && redirectTarget.startsWith("/")
+        ? redirectTarget
+        : "/app";
+    return NextResponse.redirect(new URL(target, request.url), { status: 302 });
+  }
+
   if (session && isAuthPage) {
-    return NextResponse.redirect(new URL("/app", request.url), { status: 302 });
+    const target = isSubscriptionActive(subscriptionStatus) ? "/app" : "/paywall";
+    return NextResponse.redirect(new URL(target, request.url), { status: 302 });
+  }
+
+  if (session && requiresSubscription && !isSubscriptionActive(subscriptionStatus)) {
+    const redirectUrl = new URL("/paywall", request.url);
+    redirectUrl.searchParams.set(
+      "redirectTo",
+      `${pathname}${request.nextUrl.search}`
+    );
+    return NextResponse.redirect(redirectUrl, { status: 302 });
   }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/app/:path*", "/auth/:path*"],
+  matcher: ["/app/:path*", "/auth/:path*", "/paywall/:path*"],
 };

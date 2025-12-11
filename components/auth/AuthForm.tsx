@@ -30,7 +30,8 @@ export const AuthForm = ({ mode }: { mode: AuthMode }) => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const resolveRedirectTarget = () => {
+  const resolveRedirectTarget = (override?: string) => {
+    if (override) return override;
     const target = searchParams.get("redirectTo");
     if (target && target.startsWith("/")) {
       return target;
@@ -66,8 +67,7 @@ export const AuthForm = ({ mode }: { mode: AuthMode }) => {
         router.replace(`/auth/check-email?${params.toString()}`);
         return;
       }
-      const destination = resolveRedirectTarget();
-      router.replace(destination);
+      router.replace(resolveRedirectTarget("/paywall"));
       router.refresh();
     } catch (err) {
       console.error("Authentication failed", err);
