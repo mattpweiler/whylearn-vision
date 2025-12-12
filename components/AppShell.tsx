@@ -64,9 +64,8 @@ const viewOrder: ViewKey[] = [
 const DEMO_ALLOWED_VIEW_SET = new Set<ViewKey>(["today", "planner"]);
 
 export const AppShell = () => {
-  const { state, updateState } = useAppState();
-  const { session } = useSupabase();
-  const isDemo = !session;
+  const { state, updateState, mode } = useAppState();
+  const isDemo = mode === "demo";
 
   const resolvedDefaultView = useMemo(() => {
     const desired = (state.settings.defaultHomeView ??

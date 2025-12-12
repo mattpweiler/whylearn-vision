@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { ViewKey } from "@/lib/types";
 import { useSupabase } from "@/components/providers/SupabaseProvider";
+import { useAppState } from "@/components/AppStateProvider";
 import { useRouter } from "next/navigation";
+
+const DEMO_ALLOWED_VIEWS: ViewKey[] = ["today", "planner"];
 
 const navItems: {
   key: ViewKey;
@@ -32,8 +35,6 @@ const navItems: {
   { key: "settings", label: "Settings", icon: "⚙️" },
 ];
 
-const DEMO_ALLOWED_VIEWS: ViewKey[] = ["today", "planner"];
-
 export const Sidebar = ({
   current,
   onSelect,
@@ -42,6 +43,7 @@ export const Sidebar = ({
   onSelect: (next: ViewKey) => void;
 }) => {
   const { session, supabase } = useSupabase();
+  const { mode } = useAppState();
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -55,9 +57,7 @@ export const Sidebar = ({
     }
   };
 
-  const isDemo = !session;
-
-  console.log(session);
+  const isDemo = mode === "demo";
 
   return (
     <aside className="hidden w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex">
@@ -74,9 +74,9 @@ export const Sidebar = ({
           return (
             <button
               key={item.key}
-              className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition-colors duration-200 ${
+              className={`group flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition ${
                 disabled
-                  ? "cursor-not-allowed text-slate-300"
+                  ? "cursor-not-allowed border border-dashed border-slate-200 bg-slate-100 text-slate-400 opacity-70"
                   : active
                     ? "bg-slate-900 text-white hover:bg-slate-900/80"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -89,7 +89,17 @@ export const Sidebar = ({
               disabled={disabled}
             >
               <span className="text-lg">{item.icon}</span>
-              <span>{item.label}</span>
+              <div className="flex flex-col">
+                <span className={disabled ? "font-semibold" : undefined}>
+                  {item.label}
+                </span>
+                {disabled ? (
+                  <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    <span className="text-[10px]">🔒</span>
+                    Locked in demo
+                  </span>
+                ) : null}
+              </div>
             </button>
           );
         })}

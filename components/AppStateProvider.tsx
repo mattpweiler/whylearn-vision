@@ -27,6 +27,7 @@ interface AppStateContextValue {
   resetState: () => void;
   isHydrated: boolean;
   error?: string | null;
+  mode: "demo" | "supabase";
 }
 
 const sampleGoals = () => [
@@ -90,7 +91,7 @@ const sampleTasks = () => {
   return [
     {
       id: generateId(),
-      title: "Update portfolio hero section",
+      title: "Make portfolio Buy",
       status: "in_progress" as const,
       priority: "high" as const,
       lifeAreaId: 1,
@@ -102,7 +103,7 @@ const sampleTasks = () => {
     },
     {
       id: generateId(),
-      title: "Book therapy intro session",
+      title: "Reach out to John about collaboration",
       status: "todo" as const,
       priority: "medium" as const,
       lifeAreaId: 5,
@@ -302,7 +303,7 @@ export const AppStateProvider = ({
 
   return (
     <AppStateContext.Provider
-      value={{ state, updateState, resetState, isHydrated, error }}
+      value={{ state, updateState, resetState, isHydrated, error, mode }}
     >
       {children}
     </AppStateContext.Provider>

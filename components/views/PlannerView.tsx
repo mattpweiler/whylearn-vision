@@ -70,6 +70,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [expandedPastDates, setExpandedPastDates] = useState<Record<string, boolean>>({});
+  const [includeNext7Days, setIncludeNext7Days] = useState(false);
 
   const normalizedAnchor = useMemo(
     () => normalizeDate(anchorDate),
@@ -99,6 +100,12 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
 
   const rangeStartKey = mode === "week" ? weekRangeStartKey : calendarRangeStartKey;
   const rangeEndKey = mode === "week" ? weekRangeEndKey : calendarRangeEndKey;
+  const extendedRangeEndKey = useMemo(() => {
+    if (!includeNext7Days) return rangeEndKey;
+    const parsed = parseDateKey(rangeEndKey);
+    parsed.setDate(parsed.getDate() + 7);
+    return formatDateKey(parsed);
+  }, [includeNext7Days, rangeEndKey]);
 
   useEffect(() => {
     if (!isWithinRange(selectedDate, rangeStartKey, rangeEndKey)) {
@@ -123,10 +130,20 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     return map;
   }, [state.goals]);
 
+  const visibleTasks = useMemo(
+    () =>
+      state.tasks.filter((task) => {
+        const key = taskEffectiveDate(task);
+        if (!key) return true;
+        return isWithinRange(key, rangeStartKey, extendedRangeEndKey);
+      }),
+    [extendedRangeEndKey, rangeStartKey, state.tasks]
+  );
+
   const groupedTasks = useMemo(() => {
     const scheduled: Record<string, Task[]> = {};
     const unscheduled: Task[] = [];
-    state.tasks.forEach((task) => {
+    visibleTasks.forEach((task) => {
       const key = taskEffectiveDate(task);
       if (key) {
         if (!scheduled[key]) scheduled[key] = [];
@@ -143,7 +160,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
       sortedDates: Object.keys(scheduled).sort(),
       unscheduled: sortTasks(unscheduled),
     };
-  }, [state.tasks]);
+  }, [visibleTasks]);
 
   const weeklyReflection = useMemo(
     () =>
@@ -821,7 +838,8 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
           <div>
             <p className="text-lg font-semibold text-slate-900">All tasks</p>
             <p className="text-sm text-slate-500">
-              Review every task, grouped by the day it&apos;s planned for.
+              Showing tasks scheduled between {labelForDateKey(rangeStartKey)} and{" "}
+              {labelForDateKey(extendedRangeEndKey)}.
             </p>
           </div>
           <button
@@ -837,7 +855,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
               Total tasks
             </p>
             <p className="text-3xl font-semibold text-slate-900">
-              {state.tasks.length}
+              {visibleTasks.length}
             </p>
           </div>
           <div className="rounded-2xl bg-slate-50 p-4 text-center">
@@ -858,6 +876,12 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
             />
             Show only unscheduled tasks
           </label>
+          <button
+            className="ml-4 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 hover:cursor-pointer"
+            onClick={() => setIncludeNext7Days((prev) => !prev)}
+          >
+            {includeNext7Days ? "Hide next 7 days" : "View next 7 days"}
+          </button>
         </div>
         <div className="mt-6 space-y-4">
           {!showUnscheduledOnly &&
