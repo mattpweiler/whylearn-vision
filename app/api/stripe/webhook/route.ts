@@ -69,7 +69,7 @@ const syncFromStripeSubscription = async (
   const userId =
     explicitUserId ??
     (subscription.metadata?.user_id as string | undefined) ??
-    null;
+    (await lookupUserIdByStripeRefs(subscription));
 
   if (!userId) {
     console.warn("Subscription missing user_id metadata", subscription.id);
@@ -88,6 +88,34 @@ const syncFromStripeSubscription = async (
     priceId: subscription.items.data?.[0]?.price?.id ?? null,
     currentPeriodEnd: subscription.current_period_end,
   });
+};
+
+const lookupUserIdByStripeRefs = async (subscription: Stripe.Subscription) => {
+  try {
+    const supabase = createSupabaseServiceClient();
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .select("user_id")
+      .or(
+        [
+          `stripe_subscription_id.eq.${subscription.id}`,
+          typeof subscription.customer === "string"
+            ? `stripe_customer_id.eq.${subscription.customer}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(",")
+      )
+      .maybeSingle();
+    if (error) {
+      console.error("[stripe-webhook] lookup by stripe refs failed", error);
+      return null;
+    }
+    return data?.user_id ?? null;
+  } catch (err) {
+    console.error("[stripe-webhook] failed user lookup by stripe refs", err);
+    return null;
+  }
 };
 
 export const POST = async (request: NextRequest) => {

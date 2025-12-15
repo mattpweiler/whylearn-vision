@@ -218,14 +218,6 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
           >
             {isBillingLoading ? "Opening portal…" : "Open billing portal"}
           </button>
-          <a
-            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5"
-            href="/paywall"
-            target="_blank"
-            rel="noreferrer"
-          >
-            View paywall
-          </a>
         </div>
       </section>
     </div>
