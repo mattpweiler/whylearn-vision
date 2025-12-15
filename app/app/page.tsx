@@ -24,10 +24,16 @@ export default function AppWorkspacePage() {
         const response = await fetch("/api/stripe/subscription");
         if (!response.ok) return;
         const payload = (await response.json()) as {
-          subscription: { status?: string | null } | null;
+          subscription: { status?: string | null; current_period_end?: string | null } | null;
           isActive: boolean;
         };
-        if (!payload.isActive && !isSubscriptionActive(payload.subscription?.status)) {
+        if (
+          !payload.isActive &&
+          !isSubscriptionActive(
+            payload.subscription?.status,
+            payload.subscription?.current_period_end ?? null
+          )
+        ) {
           router.replace("/paywall");
         }
       } catch (err) {

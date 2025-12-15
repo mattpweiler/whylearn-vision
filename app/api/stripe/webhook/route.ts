@@ -15,7 +15,10 @@ const toIsoDate = (timestamp?: number | null) =>
 const createSupabaseServiceClient = () => {
   const url =
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??
+    process.env.SUPABASE_SERVICE_KEY ??
+    process.env.SUPABASE_SERVICE_ROLE;
   if (!url || !serviceKey) {
     throw new Error("Missing Supabase service role configuration.");
   }
@@ -51,6 +54,10 @@ const upsertSubscription = async (payload: {
     );
 
   if (error) {
+    console.error("[stripe-webhook] Failed to upsert subscription", {
+      error,
+      payload,
+    });
     throw error;
   }
 };
@@ -121,6 +128,7 @@ export const POST = async (request: NextRequest) => {
           subscription: session.subscription,
           customer: session.customer,
           metadata: session.metadata,
+          clientReferenceId: session.client_reference_id,
         });
         if (!session.subscription || !session.customer) break;
         const subscription = await stripe.subscriptions.retrieve(
@@ -131,6 +139,7 @@ export const POST = async (request: NextRequest) => {
         const userId =
           (session.metadata?.user_id as string | undefined) ??
           (subscription.metadata?.user_id as string | undefined) ??
+          (session.client_reference_id as string | undefined) ??
           null;
         console.log("[stripe-webhook] resolved user for checkout.session.completed", {
           userId,
@@ -162,10 +171,8 @@ export const POST = async (request: NextRequest) => {
       error: err,
       eventType: event?.type,
     });
-    return NextResponse.json(
-      { error: "Webhook handler failed." },
-      { status: 500 }
-    );
+    // Always acknowledge to prevent endless retries; alerts will surface via logs.
+    return NextResponse.json({ error: "Webhook handler failed." }, { status: 200 });
   }
 
   return NextResponse.json({ received: true }, { status: 200 });

@@ -55,6 +55,19 @@ const PaywallContent = () => {
     setIsLoading(true);
     setError(null);
     try {
+      const sessionId = searchParams?.get("session_id");
+      if (
+        searchParams?.get("success") &&
+        sessionId &&
+        !sessionId.includes("CHECKOUT_SESSION_ID")
+      ) {
+        await fetch(`/api/stripe/sync-subscription?session_id=${sessionId}`, {
+          method: "POST",
+        }).catch((err) =>
+          console.error("Subscription sync from session failed", err)
+        );
+      }
+
       const response = await fetch("/api/stripe/subscription");
       if (!response.ok) {
         throw new Error("Unable to load your billing status.");
@@ -129,7 +142,10 @@ const PaywallContent = () => {
     }
   };
 
-  const hasActiveSubscription = isSubscriptionActive(subscription?.status);
+  const hasActiveSubscription = isSubscriptionActive(
+    subscription?.status,
+    subscription?.current_period_end ?? null
+  );
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">

@@ -66,25 +66,26 @@ export const POST = async (request: NextRequest) => {
       request.url
   );
 
-  const successUrl = new URL("/paywall", baseUrl);
-  successUrl.searchParams.set("success", "true");
-  successUrl.searchParams.set("redirectTo", safeRedirect);
+  const successUrl = `${baseUrl}/paywall?success=true&redirectTo=${encodeURIComponent(
+    safeRedirect
+  )}&session_id={CHECKOUT_SESSION_ID}`;
 
-  const cancelUrl = new URL("/paywall", baseUrl);
-  cancelUrl.searchParams.set("canceled", "true");
-  cancelUrl.searchParams.set("redirectTo", safeRedirect);
+  const cancelUrl = `${baseUrl}/paywall?canceled=true&redirectTo=${encodeURIComponent(
+    safeRedirect
+  )}`;
 
   try {
     const stripe = getStripeClient();
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: successUrl.toString(),
-      cancel_url: cancelUrl.toString(),
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       customer: subscriptionRow?.stripe_customer_id ?? undefined,
       customer_email: subscriptionRow?.stripe_customer_id
         ? undefined
         : session.user.email ?? undefined,
+      client_reference_id: session.user.id,
       metadata: { user_id: session.user.id },
       subscription_data: {
         metadata: { user_id: session.user.id },

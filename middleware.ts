@@ -44,7 +44,7 @@ const fetchSubscriptionStatus = async (
 ) => {
   const { data, error } = await supabase
     .from("subscriptions")
-    .select("status")
+    .select("status, current_period_end")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -52,7 +52,7 @@ const fetchSubscriptionStatus = async (
     console.error("Subscription lookup failed in middleware", error);
     return null;
   }
-  return data?.status ?? null;
+  return data ?? null;
 };
 
 export async function middleware(request: NextRequest) {
@@ -71,8 +71,9 @@ export async function middleware(request: NextRequest) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
+  const { data: user } = session ? await supabase.auth.getUser() : { data: null };
 
-  if (!session && requiresSession) {
+  if ((!session || !user?.user) && requiresSession) {
     const redirectUrl = new URL("/auth/sign-in", request.url);
     redirectUrl.searchParams.set(
       "redirectTo",
@@ -82,11 +83,16 @@ export async function middleware(request: NextRequest) {
   }
 
   const subscriptionStatus =
-    session && (requiresSubscription || isAuthPage || isPaywall)
+    session && user?.user && (requiresSubscription || isAuthPage || isPaywall)
       ? await fetchSubscriptionStatus(supabase, session.user.id)
       : null;
 
-  if (session && isPaywall && isSubscriptionActive(subscriptionStatus)) {
+  const isActive = isSubscriptionActive(
+    subscriptionStatus?.status,
+    subscriptionStatus?.current_period_end ?? null
+  );
+
+  if (session && isPaywall && isActive) {
     const redirectTarget = request.nextUrl.searchParams.get("redirectTo");
     const target =
       redirectTarget && redirectTarget.startsWith("/")
@@ -96,11 +102,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (session && isAuthPage) {
-    const target = isSubscriptionActive(subscriptionStatus) ? "/app" : "/paywall";
+    const target = isActive ? "/app" : "/paywall";
     return NextResponse.redirect(new URL(target, request.url), { status: 302 });
   }
 
-  if (session && requiresSubscription && !isSubscriptionActive(subscriptionStatus)) {
+  if (session && requiresSubscription && !isActive) {
     const redirectUrl = new URL("/paywall", request.url);
     redirectUrl.searchParams.set(
       "redirectTo",

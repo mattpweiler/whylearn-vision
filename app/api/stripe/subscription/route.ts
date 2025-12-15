@@ -56,6 +56,9 @@ export const GET = async (request: NextRequest) => {
 
   return NextResponse.json({
     subscription: data ?? null,
-    isActive: isSubscriptionActive(data?.status),
+    isActive: isSubscriptionActive(
+      data?.status,
+      data?.current_period_end ?? null
+    ),
   });
 };
