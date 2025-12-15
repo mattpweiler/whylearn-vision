@@ -169,20 +169,6 @@ export const FinancialPlanner = ({
 
   return (
     <div className="space-y-6">
-      {showIntro ? (
-        <header className="mb-2 space-y-2 text-center">
-          <p className="text-sm uppercase tracking-wide text-emerald-500">
-            WhyLearn Labs
-          </p>
-          <h1 className="text-3xl font-semibold text-slate-900">
-            Financial Planner
-          </h1>
-          <p className="text-base text-slate-500 md:text-lg">
-            Track your monthly cash flow, update your net worth, and visualize
-            the compounding effect of your habits.
-          </p>
-        </header>
-      ) : null}
       <FinancialDisclaimer />
 
       {enableModeToggle ? (
@@ -331,6 +317,8 @@ interface MonthlyStatementsSectionProps {
   onChange: (next: MonthlyStatement[]) => void;
 }
 
+type ChartRange = "3m" | "6m" | "1y" | "all";
+
 const sumItems = (items: StatementLineItem[] = []) =>
   items.reduce((total, item) => total + (item.amount || 0), 0);
 
@@ -364,8 +352,45 @@ const MonthlyStatementsSection = ({
     expenses: true,
     profit: true,
   });
-  const sorted = [...statements].sort((a, b) => a.month.localeCompare(b.month));
-  const chartData = sorted
+  const [chartRange, setChartRange] = useState<ChartRange>("all");
+  const [expandedStatements, setExpandedStatements] = useState<
+    Record<string, boolean>
+  >(() => {
+    const initial: Record<string, boolean> = {};
+    statements.forEach((statement) => {
+      initial[statement.id] = false;
+    });
+    return initial;
+  });
+  const draftStatements = useMemo(
+    () =>
+      [...statements]
+        .filter((statement) => statement.status === "draft")
+        .sort((a, b) => {
+          const aKey = a.createdAt ?? a.id;
+          const bKey = b.createdAt ?? b.id;
+          return bKey.localeCompare(aKey);
+        }),
+    [statements]
+  );
+  const finalizedStatements = useMemo(
+    () =>
+      [...statements].filter((statement) => statement.status !== "draft"),
+    [statements]
+  );
+  const sortedFinalizedAsc = useMemo(
+    () => [...finalizedStatements].sort((a, b) => a.month.localeCompare(b.month)),
+    [finalizedStatements]
+  );
+  const sortedFinalizedDesc = useMemo(
+    () => [...finalizedStatements].sort((a, b) => b.month.localeCompare(a.month)),
+    [finalizedStatements]
+  );
+  const displayStatements = useMemo(
+    () => [...draftStatements, ...sortedFinalizedDesc],
+    [draftStatements, sortedFinalizedDesc]
+  );
+  const chartData = sortedFinalizedAsc
     .filter((statement) => Boolean(statement.month))
     .map((statement) => ({
       month: statement.month,
@@ -374,6 +399,22 @@ const MonthlyStatementsSection = ({
       expenses: expenseValue(statement),
       profit: incomeValue(statement) - expenseValue(statement),
     }));
+  const filteredChartData = useMemo(() => {
+    if (chartRange === "all" || chartData.length === 0) return chartData;
+    const monthsToShow = chartRange === "3m" ? 3 : chartRange === "6m" ? 6 : 12;
+    const sortedByMonth = [...chartData].sort((a, b) => a.month.localeCompare(b.month));
+    const latest = sortedByMonth[sortedByMonth.length - 1];
+    const latestDate = monthStringToDate(latest.month);
+    if (!latestDate) return chartData;
+    const cutoff = new Date(latestDate);
+    cutoff.setMonth(cutoff.getMonth() - (monthsToShow - 1));
+
+    return sortedByMonth.filter((item) => {
+      const itemDate = monthStringToDate(item.month);
+      if (!itemDate) return true;
+      return itemDate >= cutoff;
+    });
+  }, [chartData, chartRange]);
 
   const handleFieldChange = (
     id: string,
@@ -400,6 +441,15 @@ const MonthlyStatementsSection = ({
       return next;
     });
   }, [statements]);
+  useEffect(() => {
+    setExpandedStatements((prev) => {
+      const next: Record<string, boolean> = {};
+      statements.forEach((statement) => {
+        next[statement.id] = prev[statement.id] ?? false;
+      });
+      return next;
+    });
+  }, [statements]);
 
   const handleNoteBlur = (id: string) => {
     const draft = noteDrafts[id] ?? "";
@@ -414,17 +464,24 @@ const MonthlyStatementsSection = ({
     const defaultMonth = `${now.getFullYear()}-${String(
       now.getMonth() + 1
     ).padStart(2, "0")}`;
+    const newStatement: MonthlyStatement = {
+      id: generateItemId(),
+      month: defaultMonth,
+      income: 0,
+      expenses: 0,
+      notes: "",
+      incomeItems: [],
+      expenseItems: [],
+      status: "draft",
+      createdAt: new Date().toISOString(),
+    };
+    setExpandedStatements((prev) => ({
+      ...prev,
+      [newStatement.id]: true,
+    }));
     onChange([
       ...statements,
-      {
-        id: generateItemId(),
-        month: defaultMonth,
-        income: 0,
-        expenses: 0,
-        notes: "",
-        incomeItems: [],
-        expenseItems: [],
-      },
+      newStatement,
     ]);
   };
 
@@ -467,6 +524,16 @@ const MonthlyStatementsSection = ({
     ]);
   };
 
+  const finalizeStatement = (id: string) => {
+    onChange(
+      statements.map((statement) =>
+        statement.id === id
+          ? { ...statement, status: "finalized" }
+          : statement
+      )
+    );
+  };
+
   const updateStatementItem = (
     statementId: string,
     itemId: string,
@@ -496,45 +563,71 @@ const MonthlyStatementsSection = ({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">
-              Expenses Trend
+              Revenue and Expense Trend
             </p>
-            <h3 className="text-2xl font-semibold text-slate-900">
-              Monthly spending momentum
-            </h3>
           </div>
-          <div className="flex flex-wrap gap-2 text-xs font-semibold">
-            {[
-              { key: "income", label: "Revenue" },
-              { key: "expenses", label: "Expenses" },
-              { key: "profit", label: "Profit" },
-            ].map((series) => {
-              const active = visibleSeries[series.key as keyof typeof visibleSeries];
-              return (
-                <button
-                  key={series.key}
-                  type="button"
-                  onClick={() =>
-                    setVisibleSeries((prev) => ({
-                      ...prev,
-                      [series.key]: !prev[series.key as keyof typeof prev],
-                    }))
-                  }
-                  className={`rounded-full px-3 py-1 transition ${
-                    active
-                      ? "bg-slate-900 text-white"
-                      : "border border-slate-200 bg-white text-slate-500 hover:text-slate-900"
-                  }`}
-                >
-                  {series.label}
-                </button>
-              );
-            })}
+          <div className="flex flex-col items-end gap-2 text-xs font-semibold sm:flex-row">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: "income", label: "Revenue" },
+                { key: "expenses", label: "Expenses" },
+                { key: "profit", label: "Profit" },
+              ].map((series) => {
+                const active = visibleSeries[series.key as keyof typeof visibleSeries];
+                return (
+                  <button
+                    key={series.key}
+                    type="button"
+                    onClick={() =>
+                      setVisibleSeries((prev) => ({
+                        ...prev,
+                        [series.key]: !prev[series.key as keyof typeof prev],
+                      }))
+                    }
+                    className={`rounded-full px-3 py-1 transition ${
+                      active
+                        ? "bg-slate-900 text-white"
+                        : "border border-slate-200 bg-white text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    {series.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] uppercase tracking-wide text-slate-500">
+                Range:
+              </span>
+              {[
+                { key: "3m", label: "Last 3 months" },
+                { key: "6m", label: "Last 6 months" },
+                { key: "1y", label: "Past year" },
+                { key: "all", label: "Lifetime" },
+              ].map((range) => {
+                const active = chartRange === (range.key as ChartRange);
+                return (
+                  <button
+                    key={range.key}
+                    type="button"
+                    onClick={() => setChartRange(range.key as ChartRange)}
+                    className={`rounded-full px-3 py-1 transition ${
+                      active
+                        ? "bg-emerald-600 text-white"
+                        : "border border-slate-200 bg-white text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    {range.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
         <div className="mt-6 h-72 w-full">
-          {chartData.length > 0 ? (
+          {filteredChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
+              <LineChart data={filteredChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="label" stroke="#475569" fontSize={12} />
                 <YAxis
@@ -608,264 +701,310 @@ const MonthlyStatementsSection = ({
         </div>
 
         <div className="space-y-4">
-          {sorted.map((statement) => {
+          {displayStatements.map((statement) => {
             const incomeItems = statement.incomeItems ?? [];
             const expenseItems = statement.expenseItems ?? [];
             const computedIncome = incomeValue(statement);
             const computedExpenses = expenseValue(statement);
             const netProfit = computedIncome - computedExpenses;
             const noteDraft = noteDrafts[statement.id] ?? "";
+            const isExpanded = expandedStatements[statement.id] ?? true;
+            const isDraft = statement.status === "draft";
             return (
               <div
                 key={statement.id}
                 className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4"
               >
-                <div className="grid gap-3 md:grid-cols-[140px_repeat(3,minmax(0,1fr))]">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Month
-                    <input
-                      type="month"
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      value={statement.month}
-                      onChange={(event) =>
-                        handleFieldChange(statement.id, {
-                          month: event.target.value,
-                        })
-                      }
-                    />
-                  </label>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Income
-                    <input
-                      type="number"
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      value={
-                        Number.isFinite(computedIncome) && computedIncome !== 0
-                          ? computedIncome
-                          : ""
-                      }
-                      onChange={(event) =>
-                        handleFieldChange(statement.id, {
-                          income: Number(event.target.value) || 0,
-                        })
-                      }
-                    />
-                  </label>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Expenses
-                    <input
-                      type="number"
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      value={
-                        Number.isFinite(computedExpenses) &&
-                        computedExpenses !== 0
-                          ? computedExpenses
-                          : ""
-                      }
-                      onChange={(event) =>
-                        handleFieldChange(statement.id, {
-                          expenses: Number(event.target.value) || 0,
-                        })
-                      }
-                    />
-                  </label>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Notes
-                    <textarea
-                      rows={3}
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                      value={noteDraft}
-                      onChange={(event) =>
-                        setNoteDrafts((prev) => ({
-                          ...prev,
-                          [statement.id]: event.target.value,
-                        }))
-                      }
-                      onBlur={() => handleNoteBlur(statement.id)}
-                      placeholder="Break down key expenses, assumptions, or one-off items for this month."
-                    />
-                  </label>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2 rounded-xl border border-slate-200 bg-white/60 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          Income items
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          Auto-summed into income
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-emerald-700">
-                          {formatCurrency(computedIncome)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => addStatementItem(statement.id, "income")}
-                          className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                        >
-                          + Add income
-                        </button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      {incomeItems.length > 0 ? (
-                        incomeItems.map((item) => (
-                          <div
-                            key={item.id}
-                            className="grid grid-cols-[1fr_110px_auto] items-center gap-2"
-                          >
-                            <input
-                              type="text"
-                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                              value={item.description}
-                              onChange={(event) =>
-                                updateStatementItem(
-                                  statement.id,
-                                  item.id,
-                                  "income",
-                                  { description: event.target.value }
-                                )
-                              }
-                              placeholder="Income source"
-                            />
-                            <input
-                              type="number"
-                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                              value={Number.isFinite(item.amount) ? item.amount : ""}
-                              onChange={(event) =>
-                                updateStatementItem(
-                                  statement.id,
-                                  item.id,
-                                  "income",
-                                  { amount: Number(event.target.value) || 0 }
-                                )
-                              }
-                              placeholder="$"
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                removeStatementItem(statement.id, item.id, "income")
-                              }
-                              className="rounded-lg p-2 text-rose-500 transition hover:bg-rose-50"
-                              aria-label="Delete income item"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                          No income line items yet. Add one to break down this month.
-                        </p>
-                      )}
-                    </div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {formatMonthLabel(statement.month) || "Monthly statement"}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {statement.month || "Set a month to track this period"}
+                    </p>
                   </div>
-                  <div className="space-y-2 rounded-xl border border-slate-200 bg-white/60 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          Expense items
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          Auto-summed into expenses
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-rose-600">
-                          {formatCurrency(computedExpenses)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => addStatementItem(statement.id, "expense")}
-                          className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                        >
-                          + Add expense
-                        </button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      {expenseItems.length > 0 ? (
-                        expenseItems.map((item) => (
-                          <div
-                            key={item.id}
-                            className="grid grid-cols-[1fr_110px_auto] items-center gap-2"
-                          >
-                            <input
-                              type="text"
-                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                              value={item.description}
-                              onChange={(event) =>
-                                updateStatementItem(
-                                  statement.id,
-                                  item.id,
-                                  "expense",
-                                  { description: event.target.value }
-                                )
-                              }
-                              placeholder="Expense item"
-                            />
-                            <input
-                              type="number"
-                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                              value={Number.isFinite(item.amount) ? item.amount : ""}
-                              onChange={(event) =>
-                                updateStatementItem(
-                                  statement.id,
-                                  item.id,
-                                  "expense",
-                                  { amount: Number(event.target.value) || 0 }
-                                )
-                              }
-                              placeholder="$"
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                removeStatementItem(statement.id, item.id, "expense")
-                              }
-                              className="rounded-lg p-2 text-rose-500 transition hover:bg-rose-50"
-                              aria-label="Delete expense item"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                          No expense line items yet. Add one to track this month's spend.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-3 text-sm text-slate-600">
-                  <p>
-                    Net profit:{" "}
+                  <div className="flex items-center gap-2">
+                    {isDraft ? (
+                      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                        Draft
+                      </span>
+                    ) : null}
                     <span
-                      className={`font-semibold ${
+                      className={`text-sm font-semibold ${
                         netProfit >= 0 ? "text-emerald-600" : "text-rose-500"
                       }`}
                     >
                       {formatCurrency(netProfit)}
                     </span>
-                  </p>
-                  <button
-                    type="button"
-                    className="rounded-full p-2 text-rose-500 transition hover:bg-rose-50"
-                    onClick={() => removeStatement(statement.id)}
-                    aria-label="Delete monthly statement"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
+                    <button
+                      type="button"
+                      className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white"
+                      onClick={() =>
+                        setExpandedStatements((prev) => ({
+                          ...prev,
+                          [statement.id]: !isExpanded,
+                        }))
+                      }
+                    >
+                      {isExpanded ? "Hide details" : "Show details"}
+                    </button>
+                    {isDraft ? (
+                      <button
+                        type="button"
+                        className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700"
+                        onClick={() => finalizeStatement(statement.id)}
+                      >
+                        Finalize month
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="rounded-full p-2 text-rose-500 transition hover:bg-rose-50"
+                      onClick={() => removeStatement(statement.id)}
+                      aria-label="Delete monthly statement"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
+                {!isExpanded ? (
+                  <div className="text-sm text-slate-600">
+                    <p>
+                      Revenue: {formatCurrency(computedIncome)} · Expenses:{" "}
+                      {formatCurrency(computedExpenses)}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-3 md:grid-cols-[140px_repeat(3,minmax(0,1fr))]">
+                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Month
+                        <input
+                          type="month"
+                          className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                          value={statement.month}
+                          onChange={(event) =>
+                            handleFieldChange(statement.id, {
+                              month: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Income
+                        <input
+                          type="number"
+                          className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                          value={
+                            Number.isFinite(computedIncome) && computedIncome !== 0
+                              ? computedIncome
+                              : ""
+                          }
+                          onChange={(event) =>
+                            handleFieldChange(statement.id, {
+                              income: Number(event.target.value) || 0,
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Expenses
+                        <input
+                          type="number"
+                          className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                          value={
+                            Number.isFinite(computedExpenses) &&
+                            computedExpenses !== 0
+                              ? computedExpenses
+                              : ""
+                          }
+                          onChange={(event) =>
+                            handleFieldChange(statement.id, {
+                              expenses: Number(event.target.value) || 0,
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Notes
+                        <textarea
+                          rows={3}
+                          className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                          value={noteDraft}
+                          onChange={(event) =>
+                            setNoteDrafts((prev) => ({
+                              ...prev,
+                              [statement.id]: event.target.value,
+                            }))
+                          }
+                          onBlur={() => handleNoteBlur(statement.id)}
+                          placeholder="Break down key expenses, assumptions, or one-off items for this month."
+                        />
+                      </label>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2 rounded-xl border border-slate-200 bg-white/60 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Income items
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              Auto-summed into income
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-emerald-700">
+                              {formatCurrency(computedIncome)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => addStatementItem(statement.id, "income")}
+                              className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                            >
+                              + Add income
+                            </button>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          {incomeItems.length > 0 ? (
+                            incomeItems.map((item) => (
+                              <div
+                                key={item.id}
+                                className="grid grid-cols-[1fr_110px_auto] items-center gap-2"
+                              >
+                                <input
+                                  type="text"
+                                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                                  value={item.description}
+                                  onChange={(event) =>
+                                    updateStatementItem(
+                                      statement.id,
+                                      item.id,
+                                      "income",
+                                      { description: event.target.value }
+                                    )
+                                  }
+                                  placeholder="Income source"
+                                />
+                                <input
+                                  type="number"
+                                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                                  value={Number.isFinite(item.amount) ? item.amount : ""}
+                                  onChange={(event) =>
+                                    updateStatementItem(
+                                      statement.id,
+                                      item.id,
+                                      "income",
+                                      { amount: Number(event.target.value) || 0 }
+                                    )
+                                  }
+                                  placeholder="$"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    removeStatementItem(statement.id, item.id, "income")
+                                  }
+                                  className="rounded-lg p-2 text-rose-500 transition hover:bg-rose-50"
+                                  aria-label="Delete income item"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                              No income line items yet. Add one to break down this month.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2 rounded-xl border border-slate-200 bg-white/60 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Expense items
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              Auto-summed into expenses
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-rose-600">
+                              {formatCurrency(computedExpenses)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => addStatementItem(statement.id, "expense")}
+                              className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                            >
+                              + Add expense
+                            </button>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          {expenseItems.length > 0 ? (
+                            expenseItems.map((item) => (
+                              <div
+                                key={item.id}
+                                className="grid grid-cols-[1fr_110px_auto] items-center gap-2"
+                              >
+                                <input
+                                  type="text"
+                                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                                  value={item.description}
+                                  onChange={(event) =>
+                                    updateStatementItem(
+                                      statement.id,
+                                      item.id,
+                                      "expense",
+                                      { description: event.target.value }
+                                    )
+                                  }
+                                  placeholder="Expense item"
+                                />
+                                <input
+                                  type="number"
+                                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                                  value={Number.isFinite(item.amount) ? item.amount : ""}
+                                  onChange={(event) =>
+                                    updateStatementItem(
+                                      statement.id,
+                                      item.id,
+                                      "expense",
+                                      { amount: Number(event.target.value) || 0 }
+                                    )
+                                  }
+                                  placeholder="$"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    removeStatementItem(statement.id, item.id, "expense")
+                                  }
+                                  className="rounded-lg p-2 text-rose-500 transition hover:bg-rose-50"
+                                  aria-label="Delete expense item"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                              No expense line items yet. Add one to track this month's spend.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}
-          {sorted.length === 0 && (
+          {displayStatements.length === 0 && (
             <p className="rounded-2xl border border-dashed border-slate-200 p-5 text-sm text-slate-500">
               No monthly statements yet. Log a new month to begin tracking how your
               actual spending compares to expectations.
@@ -887,3 +1026,10 @@ const formatMonthLabel = (month: string) => {
     year: "numeric",
   });
 };
+
+function monthStringToDate(month: string) {
+  if (!month) return null;
+  const [year, monthPart] = month.split("-").map(Number);
+  if (!year || !monthPart) return null;
+  return new Date(year, monthPart - 1, 1);
+}

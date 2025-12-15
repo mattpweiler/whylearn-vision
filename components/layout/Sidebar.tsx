@@ -70,7 +70,9 @@ export const Sidebar = ({
       <nav className="mt-8 space-y-1">
         {navItems.map((item) => {
           const active = item.key === current;
-          const disabled = isDemo && !DEMO_ALLOWED_VIEWS.includes(item.key);
+          const comingSoon = item.key === "next_steps";
+          const disabled =
+            comingSoon || (isDemo && !DEMO_ALLOWED_VIEWS.includes(item.key));
           return (
             <button
               key={item.key}
@@ -93,7 +95,11 @@ export const Sidebar = ({
                 <span className={disabled ? "font-semibold" : undefined}>
                   {item.label}
                 </span>
-                {disabled ? (
+                {comingSoon ? (
+                  <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Coming soon
+                  </span>
+                ) : disabled ? (
                   <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
                     <span className="text-[10px]">🔒</span>
                     Locked in demo

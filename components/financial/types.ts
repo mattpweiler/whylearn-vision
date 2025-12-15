@@ -45,6 +45,8 @@ export interface MonthlyStatement {
   notes?: string;
   incomeItems?: StatementLineItem[];
   expenseItems?: StatementLineItem[];
+  status?: "draft" | "finalized";
+  createdAt?: string;
 }
 
 export type FinancialItem =

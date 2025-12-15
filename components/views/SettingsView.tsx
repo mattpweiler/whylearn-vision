@@ -15,7 +15,7 @@ const viewOptions: { key: ViewKey; label: string }[] = [
   { key: "direction", label: "Direction" },
   { key: "financial_freedom", label: "Financial Freedom" },
   { key: "financial_profit", label: "Monthly Profit" },
-  { key: "next_steps", label: "What are My Next Steps?" },
+  { key: "next_steps", label: "What are My Next Steps? (coming soon)" },
   { key: "settings", label: "Settings" },
 ];
 
@@ -122,7 +122,11 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
               Default home view
               <select
                 className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2"
-                value={state.settings.defaultHomeView}
+                value={
+                  state.settings.defaultHomeView === "next_steps"
+                    ? "today"
+                    : state.settings.defaultHomeView
+                }
                 onChange={(e) =>
                   updateSettings({
                     defaultHomeView: e.target.value as AppState["settings"]["defaultHomeView"],
@@ -130,7 +134,11 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
                 }
               >
                 {viewOptions.map((option) => (
-                  <option key={option.key} value={option.key}>
+                  <option
+                    key={option.key}
+                    value={option.key}
+                    disabled={option.key === "next_steps"}
+                  >
                     {option.label}
                   </option>
                 ))}

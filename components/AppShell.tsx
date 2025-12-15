@@ -55,7 +55,6 @@ const viewOrder: ViewKey[] = [
   "planner",
   "year",
   "direction",
-  "next_steps",
   "financial_freedom",
   "financial_profit",
   "settings",
@@ -66,6 +65,7 @@ const DEMO_ALLOWED_VIEW_SET = new Set<ViewKey>(["today", "planner"]);
 export const AppShell = () => {
   const { state, updateState, mode } = useAppState();
   const isDemo = mode === "demo";
+  const COMING_SOON_VIEW: ViewKey = "next_steps";
 
   const resolvedDefaultView = useMemo(() => {
     const desired = (state.settings.defaultHomeView ??
@@ -74,6 +74,9 @@ export const AppShell = () => {
       desired === "week" || desired === "month" || desired === "backlog"
         ? "planner"
         : desired;
+    if (normalized === COMING_SOON_VIEW) {
+      return "today";
+    }
     if (isDemo && !DEMO_ALLOWED_VIEW_SET.has(normalized)) {
       return "today";
     }
@@ -89,6 +92,7 @@ export const AppShell = () => {
   }, [resolvedDefaultView]);
 
   const handleSelectView = (next: ViewKey) => {
+    if (next === COMING_SOON_VIEW) return;
     if (isDemo && !DEMO_ALLOWED_VIEW_SET.has(next)) return;
     setCurrentView(next);
   };
@@ -140,9 +144,13 @@ export const AppShell = () => {
               <option
                 key={item}
                 value={item}
-                disabled={isDemo && !DEMO_ALLOWED_VIEW_SET.has(item)}
+                disabled={
+                  item === COMING_SOON_VIEW ||
+                  (isDemo && !DEMO_ALLOWED_VIEW_SET.has(item))
+                }
               >
                 {meta[item].title}
+                {item === COMING_SOON_VIEW ? " (coming soon)" : ""}
               </option>
             ))}
           </select>

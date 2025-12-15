@@ -15,6 +15,7 @@ const DEMO_STORAGE_KEY = "whylearn_demo_next_steps";
 
 export const NextStepsView = () => {
   const { session } = useSupabase();
+  const isComingSoon = true;
   const [question, setQuestion] = useState("");
   const [entries, setEntries] = useState<NextStepEntry[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -100,6 +101,12 @@ export const NextStepsView = () => {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-3xl border border-slate-200 bg-slate-100 p-4 text-sm text-slate-600">
+        <p className="font-semibold text-slate-800">Coming soon</p>
+        <p className="mt-1">
+          The AI-powered next steps experience is being revamped. Check back soon for the new flow.
+        </p>
+      </div>
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-2xl font-semibold text-slate-900">
           What are my next steps?
@@ -116,6 +123,7 @@ export const NextStepsView = () => {
             placeholder="Where should I focus this week?"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
+            disabled={isComingSoon}
           />
           {error ? (
             <p className="text-sm text-red-600" role="alert">
@@ -124,10 +132,14 @@ export const NextStepsView = () => {
           ) : null}
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isComingSoon}
             className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-900/90 disabled:opacity-70"
           >
-            {isSubmitting ? "Thinking…" : "Ask the AI mentor"}
+            {isComingSoon
+              ? "Coming soon"
+              : isSubmitting
+                ? "Thinking…"
+                : "Ask the AI mentor"}
           </button>
         </form>
       </section>
