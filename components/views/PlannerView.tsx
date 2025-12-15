@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useState, type DragEvent, type MouseEvent } from "react";
 import { AppState, Task } from "@/lib/types";
 import {
   endOfWeek,
@@ -71,6 +71,8 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [expandedPastDates, setExpandedPastDates] = useState<Record<string, boolean>>({});
   const [includeNext7Days, setIncludeNext7Days] = useState(false);
+  const [dayModalDate, setDayModalDate] = useState<string | null>(null);
+  const [dayModalTaskTitle, setDayModalTaskTitle] = useState("");
 
   const normalizedAnchor = useMemo(
     () => normalizeDate(anchorDate),
@@ -121,6 +123,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
 
   const selectedDayTasks = tasksByDate[selectedDate] ?? [];
   const selectedDayLabel = labelForDateKey(selectedDate);
+  const dayModalTasks = dayModalDate ? tasksByDate[dayModalDate] ?? [] : [];
 
   const goalLookup = useMemo(() => {
     const map: Record<string, string> = {};
@@ -140,6 +143,12 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     [extendedRangeEndKey, rangeStartKey, state.tasks]
   );
 
+  const reorderByCompletion = (tasks: Task[]) => {
+    const pending = tasks.filter((task) => !isTaskCompleted(task));
+    const done = tasks.filter((task) => isTaskCompleted(task));
+    return [...pending, ...done];
+  };
+
   const groupedTasks = useMemo(() => {
     const scheduled: Record<string, Task[]> = {};
     const unscheduled: Task[] = [];
@@ -153,12 +162,12 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
       }
     });
     Object.keys(scheduled).forEach((key) => {
-      scheduled[key] = sortTasks(scheduled[key]);
+      scheduled[key] = reorderByCompletion(sortTasks(scheduled[key]));
     });
     return {
       scheduled,
       sortedDates: Object.keys(scheduled).sort(),
-      unscheduled: sortTasks(unscheduled),
+      unscheduled: reorderByCompletion(sortTasks(unscheduled)),
     };
   }, [visibleTasks]);
 
@@ -394,6 +403,43 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     }
   };
 
+  const openDayModal = (dateKey: string, recenter = false) => {
+    handleSelectDate(dateKey, recenter);
+    setDayModalDate(dateKey);
+    setDayModalTaskTitle("");
+  };
+
+  const closeDayModal = () => {
+    setDayModalDate(null);
+    setDayModalTaskTitle("");
+  };
+
+  const addTaskForModalDate = () => {
+    if (!dayModalDate) return;
+    const title = dayModalTaskTitle.trim();
+    if (!title) return;
+    const now = new Date().toISOString();
+    const monthTag = monthLabel(parseDateKey(dayModalDate));
+    updateState((prev) => ({
+      ...prev,
+      tasks: [
+        ...prev.tasks,
+        {
+          id: generateId(),
+          title,
+          status: "todo",
+          priority: "medium",
+          orderIndex: prev.tasks.length + 1,
+          scheduledFor: dayModalDate,
+          scheduledDate: dayModalDate,
+          month: monthTag,
+          createdAt: now,
+        },
+      ],
+    }));
+    setDayModalTaskTitle("");
+  };
+
   const handleTaskDrop = (dateKey: string) => {
     if (!draggingTaskId) return;
     moveTaskToDate(draggingTaskId, dateKey);
@@ -425,6 +471,20 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     if (!draggingTaskId || draggingTaskId === targetTask.id) return;
     reorderTaskRelative(draggingTaskId, targetTask);
     setDraggingTaskId(null);
+  };
+
+  const handleTaskRowClick = (event: MouseEvent<HTMLDivElement>, task: Task) => {
+    if (editingTaskId === task.id) return;
+    const target = event.target as HTMLElement;
+    if (
+      target.closest("button") ||
+      target.closest("input") ||
+      target.closest("select") ||
+      target.closest("textarea")
+    ) {
+      return;
+    }
+    toggleTaskCompletion(task);
   };
 
   const goToToday = () => {
@@ -525,7 +585,11 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     return (
       <div
         key={task.id}
-        className="flex flex-col gap-2 rounded-2xl border border-slate-100 bg-white/60 p-3 transition hover:border-slate-200 hover:bg-white cursor-pointer"
+        className={`flex cursor-pointer flex-wrap items-start justify-between gap-3 rounded-2xl border px-4 py-3 transition-colors ${
+          isDone
+            ? "border-emerald-100 bg-emerald-50/70 hover:border-emerald-200 hover:bg-emerald-50"
+            : "border-slate-100 bg-white/60 hover:border-slate-200 hover:bg-white"
+        }`}
         draggable
         onDragStart={(event) => handleDragStart(task.id, event)}
         onDragEnd={() => setDraggingTaskId(null)}
@@ -534,8 +598,9 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
           event.preventDefault();
           handleTaskRowDrop(task);
         }}
+        onClick={(event) => handleTaskRowClick(event, task)}
       >
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-start gap-2 lg:flex-1">
             <input
               type="checkbox"
@@ -570,8 +635,8 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
               ) : (
                 <>
                   <p
-                    className={`font-semibold ${
-                      isDone ? "text-emerald-600 line-through" : "text-slate-900"
+                    className={`font-medium ${
+                      isDone ? "text-emerald-800" : "text-slate-900"
                     }`}
                   >
                     {task.title}
@@ -729,7 +794,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                         ? "border-slate-900 bg-slate-900/5"
                         : "border-slate-100 hover:border-slate-200"
                     }`}
-                    onClick={() => handleSelectDate(dateKey)}
+                    onClick={() => openDayModal(dateKey)}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => {
                       e.preventDefault();
@@ -782,7 +847,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                             ? "border-slate-900 bg-slate-900/5"
                             : "border-slate-100 hover:border-slate-200"
                         } ${day.inMonth ? "" : "opacity-60"}`}
-                        onClick={() => handleSelectDate(day.key, !day.inMonth)}
+                        onClick={() => openDayModal(day.key, !day.inMonth)}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => {
                           e.preventDefault();
@@ -962,6 +1027,57 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
         </div>
       </section>
     </div>
+    {dayModalDate && (
+      <div className="fixed inset-0 z-40 flex items-center justify-center px-4">
+        <div
+          className="absolute inset-0 bg-slate-900/40"
+          onClick={closeDayModal}
+        />
+        <div className="relative z-10 w-full max-w-3xl rounded-3xl bg-white p-6 shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm uppercase tracking-wide text-slate-500">
+                Tasks for
+              </p>
+              <p className="text-2xl font-semibold text-slate-900">
+                {labelForDateKey(dayModalDate)}
+              </p>
+            </div>
+            <button
+              className="rounded-full border border-slate-200 px-3 py-1 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+              onClick={closeDayModal}
+            >
+              Close
+            </button>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <input
+              className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+              placeholder="Add a task for this day…"
+              value={dayModalTaskTitle}
+              onChange={(e) => setDayModalTaskTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addTaskForModalDate()}
+            />
+            <button
+              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
+              onClick={addTaskForModalDate}
+              disabled={!dayModalTaskTitle.trim()}
+            >
+              Add task
+            </button>
+          </div>
+          <div className="mt-6 space-y-3">
+            {dayModalTasks.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+                No tasks scheduled for this day yet.
+              </p>
+            ) : (
+              dayModalTasks.map((task) => renderTaskRow(task))
+            )}
+          </div>
+        </div>
+      </div>
+    )}
     {isCreateModalOpen && (
       <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
         <div
