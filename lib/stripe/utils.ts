@@ -51,7 +51,6 @@ export const resolveAppBaseUrl = (fallback?: string) => {
       fallback,
       attempted: debugEntries,
     });
+    return "http://localhost:3000";
   }
-
-  return "http://localhost:3000";
 };
