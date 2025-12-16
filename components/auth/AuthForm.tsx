@@ -30,15 +30,6 @@ export const AuthForm = ({ mode }: { mode: AuthMode }) => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const resolveBaseUrl = () => {
-    if (typeof window !== "undefined") return window.location.origin;
-    return (
-      process.env.NEXT_PUBLIC_APP_URL ??
-      process.env.APP_URL ??
-      "http://localhost:3000"
-    );
-  };
-
   const resolveRedirectTarget = (override?: string) => {
     if (override) return override;
     const target = searchParams.get("redirectTo");
@@ -67,14 +58,7 @@ export const AuthForm = ({ mode }: { mode: AuthMode }) => {
         return;
       }
 
-      const target = resolveRedirectTarget("/paywall");
-      const emailRedirectTo = `${resolveBaseUrl()}${target}`;
-      const { data, error: authError } = await supabase.auth.signUp({
-        ...payload,
-        options: {
-          emailRedirectTo,
-        },
-      });
+      const { data, error: authError } = await supabase.auth.signUp(payload);
       if (authError) {
         throw authError;
       }
