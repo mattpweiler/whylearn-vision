@@ -157,23 +157,6 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
                 <option value={1}>Monday</option>
               </select>
             </label>
-            <label className="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3">
-              <div>
-                <p className="font-medium text-slate-900">
-                  Show life area snapshot on Today
-                </p>
-                <p className="text-xs text-slate-500">
-                  Quick reminder of how each area is trending.
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                checked={state.settings.showLifeAreaSummaryOnToday}
-                onChange={(e) =>
-                  updateSettings({ showLifeAreaSummaryOnToday: e.target.checked })
-                }
-              />
-            </label>
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-xs">
               <p className="font-semibold text-slate-900">Privacy policy</p>
               <p className="mt-1 text-slate-600">

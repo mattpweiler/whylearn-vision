@@ -1,6 +1,6 @@
 "use client";
 
-const lastUpdated = "January 1, 2025";
+const lastUpdated = "December 16, 2025";
 
 export default function PrivacyPolicyPage() {
   return (

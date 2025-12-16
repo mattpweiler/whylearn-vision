@@ -17,6 +17,14 @@ export const PageHeader = ({
   const { session, supabase } = useSupabase();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackName, setFeedbackName] = useState("");
+  const [feedbackEmail, setFeedbackEmail] = useState("");
+  const [feedbackReason, setFeedbackReason] = useState("");
+  const [feedbackStatus, setFeedbackStatus] = useState<
+    { type: "success" | "error"; text: string } | null
+  >(null);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const isDemo = !session;
 
@@ -45,6 +53,46 @@ export const PageHeader = ({
 
   const showMenu = Boolean(session);
 
+  const submitFeedback = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setFeedbackStatus(null);
+    if (!feedbackName.trim() || !feedbackEmail.trim() || !feedbackReason.trim()) {
+      setFeedbackStatus({ type: "error", text: "Please fill in all fields." });
+      return;
+    }
+    setIsSubmittingFeedback(true);
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: feedbackName,
+          email: feedbackEmail,
+          reason: feedbackReason,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to submit feedback");
+      }
+      setFeedbackStatus({ type: "success", text: "Thanks for the feedback!" });
+      setFeedbackName("");
+      setFeedbackEmail("");
+      setFeedbackReason("");
+      setTimeout(() => {
+        setFeedbackOpen(false);
+        setFeedbackStatus(null);
+      }, 900);
+    } catch (err) {
+      console.error(err);
+      setFeedbackStatus({
+        type: "error",
+        text: "Unable to send feedback right now. Please try again soon.",
+      });
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
       <div>
@@ -52,6 +100,13 @@ export const PageHeader = ({
         <p className="text-sm text-slate-500">{subtitle}</p>
       </div>
       <div className="flex items-center gap-3">
+        <button
+          type="button"
+          className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+          onClick={() => setFeedbackOpen(true)}
+        >
+          Report an issue / Feedback
+        </button>
         {isDemo ? (
           <Link
             href="/auth/sign-up"
@@ -94,6 +149,75 @@ export const PageHeader = ({
           ) : null}
         </div>
       </div>
+      {feedbackOpen ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-slate-900/40"
+            onClick={() => setFeedbackOpen(false)}
+          />
+          <div className="relative z-50 w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-lg font-semibold text-slate-900">
+                  Report an Issue or Give Feedback
+                </p>
+                <p className="text-sm text-slate-600">
+                  Tell us what&apos;s broken or what we should improve.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-slate-300"
+                onClick={() => setFeedbackOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <form className="mt-4 space-y-3" onSubmit={submitFeedback}>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input
+                  className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+                  placeholder="Your name"
+                  value={feedbackName}
+                  onChange={(e) => setFeedbackName(e.target.value)}
+                />
+                <input
+                  type="email"
+                  className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+                  placeholder="you@example.com"
+                  value={feedbackEmail}
+                  onChange={(e) => setFeedbackEmail(e.target.value)}
+                />
+              </div>
+              <textarea
+                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+                rows={4}
+                placeholder="What happened or what should we improve?"
+                value={feedbackReason}
+                onChange={(e) => setFeedbackReason(e.target.value)}
+              />
+              {feedbackStatus ? (
+                <p
+                  className={`text-sm ${
+                    feedbackStatus.type === "success"
+                      ? "text-emerald-700"
+                      : "text-red-600"
+                  }`}
+                >
+                  {feedbackStatus.text}
+                </p>
+              ) : null}
+              <button
+                type="submit"
+                disabled={isSubmittingFeedback}
+                className="w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+              >
+                {isSubmittingFeedback ? "Sending…" : "Submit feedback"}
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </header>
   );
 };

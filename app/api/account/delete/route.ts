@@ -23,6 +23,18 @@ const createSupabaseServerClient = (request: NextRequest) =>
     }
   );
 
+const createSupabaseAdminClient = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
+  const serviceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??
+    process.env.SUPABASE_SERVICE_KEY ??
+    process.env.SUPABASE_SERVICE_ROLE;
+  if (!url || !serviceKey) return null;
+  return createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+};
+
 export const POST = async (request: NextRequest) => {
   try {
     const supabase = createSupabaseServerClient(request);
@@ -34,22 +46,28 @@ export const POST = async (request: NextRequest) => {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !serviceKey) {
+    const adminClient = createSupabaseAdminClient();
+    if (!adminClient) {
       return NextResponse.json(
         { error: "Server misconfigured" },
         { status: 500 }
       );
     }
 
-    const adminClient = createClient(url, serviceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
+    // Instead of immediate deletion, queue the request in the feedback table.
+    const email = user.email ?? "unknown";
+    const name =
+      (user.user_metadata?.full_name as string | undefined) ??
+      (user.user_metadata?.name as string | undefined) ??
+      "Unknown user";
+
+    const { error: feedbackError } = await adminClient.from("feedback").insert({
+      name,
+      email,
+      reason: "Account deletion requested",
     });
-    const { error: deleteError } = await adminClient.auth.admin.deleteUser(
-      user.id
-    );
-    if (deleteError) throw deleteError;
+
+    if (feedbackError) throw feedbackError;
 
     return NextResponse.json({ success: true });
   } catch (err) {

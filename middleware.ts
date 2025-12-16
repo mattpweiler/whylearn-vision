@@ -71,9 +71,19 @@ export async function middleware(request: NextRequest) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
-  const { data: user } = session ? await supabase.auth.getUser() : { data: null };
 
-  if ((!session || !user?.user) && requiresSession) {
+  const forceAuth = request.nextUrl.searchParams.get("forceAuth") === "true";
+  let currentSession = session;
+  if (forceAuth && session) {
+    await supabase.auth.signOut();
+    currentSession = null;
+  }
+
+  const { data: user } = currentSession
+    ? await supabase.auth.getUser()
+    : { data: null };
+
+  if ((!currentSession || !user?.user) && requiresSession) {
     const redirectUrl = new URL("/auth/sign-in", request.url);
     redirectUrl.searchParams.set(
       "redirectTo",
@@ -83,8 +93,10 @@ export async function middleware(request: NextRequest) {
   }
 
   const subscriptionStatus =
-    session && user?.user && (requiresSubscription || isAuthPage || isPaywall)
-      ? await fetchSubscriptionStatus(supabase, session.user.id)
+    currentSession &&
+    user?.user &&
+    (requiresSubscription || isAuthPage || isPaywall)
+      ? await fetchSubscriptionStatus(supabase, currentSession.user.id)
       : null;
 
   const isActive = isSubscriptionActive(
@@ -92,7 +104,7 @@ export async function middleware(request: NextRequest) {
     subscriptionStatus?.current_period_end ?? null
   );
 
-  if (session && isPaywall && isActive) {
+  if (currentSession && isPaywall && isActive) {
     const redirectTarget = request.nextUrl.searchParams.get("redirectTo");
     const target =
       redirectTarget && redirectTarget.startsWith("/")
@@ -101,12 +113,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(target, request.url), { status: 302 });
   }
 
-  if (session && isAuthPage) {
+  if (currentSession && isAuthPage) {
     const target = isActive ? "/app" : "/paywall";
     return NextResponse.redirect(new URL(target, request.url), { status: 302 });
   }
 
-  if (session && requiresSubscription && !isActive) {
+  if (currentSession && requiresSubscription && !isActive) {
     const redirectUrl = new URL("/paywall", request.url);
     redirectUrl.searchParams.set(
       "redirectTo",
