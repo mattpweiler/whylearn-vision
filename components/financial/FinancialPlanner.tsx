@@ -713,7 +713,7 @@ const MonthlyStatementsSection = ({
             return (
               <div
                 key={statement.id}
-                className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4"
+                className="space-y-3 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/60 p-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -777,8 +777,8 @@ const MonthlyStatementsSection = ({
                   </div>
                 ) : (
                   <>
-                    <div className="grid gap-3 md:grid-cols-[140px_repeat(3,minmax(0,1fr))]">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-[140px_repeat(3,minmax(0,1fr))]">
+                      <label className="min-w-0 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Month
                         <input
                           type="month"
@@ -791,7 +791,7 @@ const MonthlyStatementsSection = ({
                           }
                         />
                       </label>
-                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <label className="min-w-0 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Income
                         <input
                           type="number"
@@ -808,7 +808,7 @@ const MonthlyStatementsSection = ({
                           }
                         />
                       </label>
-                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <label className="min-w-0 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Expenses
                         <input
                           type="number"
@@ -826,7 +826,7 @@ const MonthlyStatementsSection = ({
                           }
                         />
                       </label>
-                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <label className="min-w-0 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Notes
                         <textarea
                           rows={3}
@@ -872,11 +872,11 @@ const MonthlyStatementsSection = ({
                             incomeItems.map((item) => (
                               <div
                                 key={item.id}
-                                className="grid grid-cols-[1fr_110px_auto] items-center gap-2"
+                                className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_110px_auto]"
                               >
                                 <input
                                   type="text"
-                                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                                  className="w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
                                   value={item.description}
                                   onChange={(event) =>
                                     updateStatementItem(
@@ -890,7 +890,7 @@ const MonthlyStatementsSection = ({
                                 />
                                 <input
                                   type="number"
-                                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
                                   value={Number.isFinite(item.amount) ? item.amount : ""}
                                   onChange={(event) =>
                                     updateStatementItem(
@@ -949,11 +949,11 @@ const MonthlyStatementsSection = ({
                             expenseItems.map((item) => (
                               <div
                                 key={item.id}
-                                className="grid grid-cols-[1fr_110px_auto] items-center gap-2"
+                                className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_110px_auto]"
                               >
                                 <input
                                   type="text"
-                                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                                  className="w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
                                   value={item.description}
                                   onChange={(event) =>
                                     updateStatementItem(
@@ -967,7 +967,7 @@ const MonthlyStatementsSection = ({
                                 />
                                 <input
                                   type="number"
-                                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
                                   value={Number.isFinite(item.amount) ? item.amount : ""}
                                   onChange={(event) =>
                                     updateStatementItem(

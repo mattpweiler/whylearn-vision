@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useAppState } from "@/components/AppStateProvider";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { PageHeader } from "@/components/layout/Header";
+import { MobileMenu } from "@/components/layout/MobileMenu";
+import { MobileActions } from "@/components/layout/MobileActions";
 import { DirectionView } from "@/components/views/DirectionView";
 import { FinancialFreedomView } from "@/components/views/FinancialFreedomView";
 import { PlannerView } from "@/components/views/PlannerView";
@@ -13,7 +15,7 @@ import { YearGoalsView } from "@/components/views/YearGoalsView";
 import { MonthlyProfitView } from "@/components/views/MonthlyProfitView";
 import { NextStepsView } from "@/components/views/NextStepsView";
 import { ViewKey } from "@/lib/types";
-import { useSupabase } from "@/components/providers/SupabaseProvider";
+import { DEMO_ALLOWED_VIEWS } from "@/components/layout/navConfig";
 
 const meta: Record<ViewKey, { title: string; subtitle: string }> = {
   today: {
@@ -50,17 +52,7 @@ const meta: Record<ViewKey, { title: string; subtitle: string }> = {
   },
 };
 
-const viewOrder: ViewKey[] = [
-  "today",
-  "planner",
-  "year",
-  "direction",
-  "financial_freedom",
-  "financial_profit",
-  "settings",
-];
-
-const DEMO_ALLOWED_VIEW_SET = new Set<ViewKey>(["today", "planner"]);
+const DEMO_ALLOWED_VIEW_SET = new Set<ViewKey>(DEMO_ALLOWED_VIEWS);
 
 export const AppShell = () => {
   const { state, updateState, mode } = useAppState();
@@ -134,32 +126,26 @@ export const AppShell = () => {
     <div className="flex min-h-screen bg-slate-50 text-slate-900">
       <Sidebar current={currentView} onSelect={handleSelectView} />
       <main className="flex flex-1 flex-col gap-6 px-4 py-6 lg:px-10">
-        <div className="lg:hidden">
-          <select
-            value={currentView}
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
-            onChange={(e) => handleSelectView(e.target.value as ViewKey)}
-          >
-            {viewOrder.map((item) => (
-              <option
-                key={item}
-                value={item}
-                disabled={
-                  item === COMING_SOON_VIEW ||
-                  (isDemo && !DEMO_ALLOWED_VIEW_SET.has(item))
-                }
-              >
-                {meta[item].title}
-                {item === COMING_SOON_VIEW ? " (coming soon)" : ""}
-              </option>
-            ))}
-          </select>
+        <div className="flex items-center justify-between lg:hidden">
+          <MobileMenu
+            currentView={currentView}
+            onSelect={handleSelectView}
+            isDemo={isDemo}
+            comingSoonView={COMING_SOON_VIEW}
+            compact
+          />
+          <MobileActions
+            profileName={state.profile.displayName}
+            onGoToSettings={() => handleSelectView("settings")}
+          />
         </div>
-        <PageHeader
-          title={currentView === "today" ? todayLabel : activeMeta.title}
-          subtitle={activeMeta.subtitle}
-          profileName={state.profile.displayName}
-        />
+        <div className="hidden lg:block">
+          <PageHeader
+            title={currentView === "today" ? todayLabel : activeMeta.title}
+            subtitle={activeMeta.subtitle}
+            profileName={state.profile.displayName}
+          />
+        </div>
         <section>{viewComponent}</section>
       </main>
     </div>

@@ -5,35 +5,7 @@ import { ViewKey } from "@/lib/types";
 import { useSupabase } from "@/components/providers/SupabaseProvider";
 import { useAppState } from "@/components/AppStateProvider";
 import { useRouter } from "next/navigation";
-
-const DEMO_ALLOWED_VIEWS: ViewKey[] = ["today", "planner"];
-
-const navItems: {
-  key: ViewKey;
-  label: string;
-  icon: string;
-}[] = [
-  { key: "today", label: "Today", icon: "☀️" },
-  { key: "planner", label: "Planner", icon: "🗓️" },
-  { key: "year", label: "Year Goals Progress", icon: "🏔️" },
-  {
-    key: "financial_freedom",
-    label: "Financial Freedom",
-    icon: "💸",
-  },
-  {
-    key: "financial_profit",
-    label: "Monthly Profit",
-    icon: "📈",
-  },
-  {
-    key: "next_steps",
-    label: "What are My Next Steps?",
-    icon: "🤔",
-  },
-  { key: "direction", label: "Reflections", icon: "🧭" },
-  { key: "settings", label: "Settings", icon: "⚙️" },
-];
+import { DEMO_ALLOWED_VIEWS, navItems } from "@/components/layout/navConfig";
 
 export const Sidebar = ({
   current,
@@ -70,7 +42,7 @@ export const Sidebar = ({
       <nav className="mt-8 space-y-1">
         {navItems.map((item) => {
           const active = item.key === current;
-          const comingSoon = item.key === "next_steps";
+          const comingSoon = Boolean(item.comingSoon);
           const disabled =
             comingSoon || (isDemo && !DEMO_ALLOWED_VIEWS.includes(item.key));
           return (
