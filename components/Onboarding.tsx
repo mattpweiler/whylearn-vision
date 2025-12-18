@@ -109,7 +109,7 @@ export const OnboardingFlow = () => {
         ...prev.profile,
         onboardingCompletedAt: now,
         displayName:
-          answers.displayName?.trim() || prev.profile.displayName || "Friend",
+          answers.displayName?.trim() || prev.profile.displayName || "Demo",
       },
       lifeAreaScores: [
         ...prev.lifeAreaScores,

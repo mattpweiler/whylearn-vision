@@ -2,12 +2,14 @@ export interface IncomeItem {
   id: string;
   description: string;
   amount: number; // monthly
+  type?: any;
 }
 
 export interface ExpenseItem {
   id: string;
   description: string;
   amount: number; // monthly
+  type?: any;
 }
 
 export interface FinancialSettings {
@@ -20,12 +22,14 @@ export interface AssetItem {
   id: string;
   description: string;
   amount: number;
+  type?: any;
 }
 
 export interface LiabilityItem {
   id: string;
   description: string;
   amount: number;
+  type?: any;
 }
 
 export type StatementLineItemType = "income" | "expense";

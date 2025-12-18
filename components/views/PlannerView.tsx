@@ -82,10 +82,10 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
       if (target.closest(`[data-task-menu-id="${openTaskMenuId}"]`)) return;
       setOpenTaskMenuId(null);
     };
-    document.addEventListener("mousedown", handler);
+    document.addEventListener("mousedown", handler as any);
     document.addEventListener("touchstart", handler);
     return () => {
-      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("mousedown", handler as any);
       document.removeEventListener("touchstart", handler);
     };
   }, [openTaskMenuId]);

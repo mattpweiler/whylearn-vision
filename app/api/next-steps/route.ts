@@ -35,7 +35,7 @@ const buildContextSummary = (payload: {
   const lines: string[] = [];
   if (payload.profile) {
     lines.push(
-      `Profile: ${payload.profile.display_name ?? "Friend"} in ${
+      `Profile: ${payload.profile.display_name ?? "Demo"} in ${
         payload.profile.timezone ?? "unknown timezone"
       }`
     );
