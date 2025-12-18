@@ -1,6 +1,11 @@
 import { ViewKey } from "@/lib/types";
 
-export const DEMO_ALLOWED_VIEWS: ViewKey[] = ["today", "planner"];
+export const DEMO_ALLOWED_VIEWS: ViewKey[] = [
+  "today",
+  "planner",
+  "financial_freedom",
+  "financial_profit",
+];
 
 export const navItems: {
   key: ViewKey;

@@ -16,6 +16,7 @@ interface BudgetTableProps<T extends FinancialItem> {
   onChange: (items: T[]) => void;
   actionLabel: string;
   emptyHelper: string;
+  readOnly?: boolean;
 }
 
 const BudgetTable = <T extends FinancialItem>({
@@ -24,11 +25,13 @@ const BudgetTable = <T extends FinancialItem>({
   onChange,
   actionLabel,
   emptyHelper,
+  readOnly = false,
 }: BudgetTableProps<T>) => {
   const handleItemChange = (
     id: string,
     updates: Partial<Pick<FinancialItem, "description" | "amount">>
   ) => {
+    if (readOnly) return;
     onChange(
       items.map((item) =>
         item.id === id ? { ...item, ...updates } : item
@@ -37,10 +40,12 @@ const BudgetTable = <T extends FinancialItem>({
   };
 
   const handleDelete = (id: string) => {
+    if (readOnly) return;
     onChange(items.filter((item) => item.id !== id));
   };
 
   const handleAdd = () => {
+    if (readOnly) return;
     const newItem = {
       id: generateItemId(),
       description: "",
@@ -61,7 +66,8 @@ const BudgetTable = <T extends FinancialItem>({
         <button
           type="button"
           onClick={handleAdd}
-          className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+          disabled={readOnly}
+          className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           + {actionLabel}
         </button>
@@ -78,6 +84,8 @@ const BudgetTable = <T extends FinancialItem>({
                 className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
                 placeholder="Description"
                 value={item.description}
+                readOnly={readOnly}
+                disabled={readOnly}
                 onChange={(event) =>
                   handleItemChange(item.id, {
                     description: event.target.value,
@@ -95,6 +103,8 @@ const BudgetTable = <T extends FinancialItem>({
                     ? item.amount.toString()
                     : ""
                 }
+                readOnly={readOnly}
+                disabled={readOnly}
                 onChange={(event) =>
                   handleItemChange(item.id, {
                     amount: parseAmountInput(event.target.value),
@@ -103,9 +113,10 @@ const BudgetTable = <T extends FinancialItem>({
               />
               <button
                 type="button"
-                className="rounded-full p-2 text-rose-500 transition hover:bg-rose-50"
+                className="rounded-full p-2 text-rose-500 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={() => handleDelete(item.id)}
                 aria-label={`Remove ${title} entry`}
+                disabled={readOnly}
               >
                 <TrashIcon className="h-4 w-4" />
               </button>
@@ -131,59 +142,67 @@ const BudgetTable = <T extends FinancialItem>({
 interface IncomeTableProps {
   items: IncomeItem[];
   onChange: (items: IncomeItem[]) => void;
+  readOnly?: boolean;
 }
 
-export const IncomeTable = ({ items, onChange }: IncomeTableProps) => (
+export const IncomeTable = ({ items, onChange, readOnly }: IncomeTableProps) => (
   <BudgetTable
     title="Income"
     items={items}
     onChange={onChange}
     actionLabel="Add Income"
     emptyHelper="Map the money coming in each month."
+    readOnly={readOnly}
   />
 );
 
 interface ExpenseTableProps {
   items: ExpenseItem[];
   onChange: (items: ExpenseItem[]) => void;
+  readOnly?: boolean;
 }
 
-export const ExpenseTable = ({ items, onChange }: ExpenseTableProps) => (
+export const ExpenseTable = ({ items, onChange, readOnly }: ExpenseTableProps) => (
   <BudgetTable
     title="Expenses"
     items={items}
     onChange={onChange}
     actionLabel="Add Expense"
     emptyHelper="List recurring bills, lifestyle, and investments."
+    readOnly={readOnly}
   />
 );
 
 interface AssetTableProps {
   items: AssetItem[];
   onChange: (items: AssetItem[]) => void;
+  readOnly?: boolean;
 }
 
-export const AssetTable = ({ items, onChange }: AssetTableProps) => (
+export const AssetTable = ({ items, onChange, readOnly }: AssetTableProps) => (
   <BudgetTable
     title="Assets"
     items={items}
     onChange={onChange}
     actionLabel="Add Asset"
     emptyHelper="Track savings, investments, business equity."
+    readOnly={readOnly}
   />
 );
 
 interface LiabilityTableProps {
   items: LiabilityItem[];
   onChange: (items: LiabilityItem[]) => void;
+  readOnly?: boolean;
 }
 
-export const LiabilityTable = ({ items, onChange }: LiabilityTableProps) => (
+export const LiabilityTable = ({ items, onChange, readOnly }: LiabilityTableProps) => (
   <BudgetTable
     title="Liabilities"
     items={items}
     onChange={onChange}
     actionLabel="Add Liability"
     emptyHelper="Mortgages, loans, and other obligations."
+    readOnly={readOnly}
   />
 );

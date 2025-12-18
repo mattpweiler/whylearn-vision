@@ -109,9 +109,9 @@ export const AppShell = () => {
       case "direction":
         return <DirectionView state={state} updateState={updateState} />;
       case "financial_freedom":
-        return <FinancialFreedomView />;
+        return <FinancialFreedomView readOnly={isDemo} />;
       case "financial_profit":
-        return <MonthlyProfitView />;
+        return <MonthlyProfitView readOnly={isDemo} />;
       case "next_steps":
         return <NextStepsView />;
       case "settings":

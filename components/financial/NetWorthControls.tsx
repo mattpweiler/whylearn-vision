@@ -8,6 +8,7 @@ interface NetWorthControlsProps {
   onChange: (settings: FinancialSettings) => void;
   netCashFlow: number;
   netWorth: number;
+  readOnly?: boolean;
 }
 
 export const NetWorthControls = ({
@@ -15,8 +16,10 @@ export const NetWorthControls = ({
   onChange,
   netCashFlow,
   netWorth,
+  readOnly = false,
 }: NetWorthControlsProps) => {
   const handleNumberChange = (key: keyof FinancialSettings, value: string) => {
+    if (readOnly) return;
     const numeric = parseAmountInput(value);
     onChange({
       ...settings,
@@ -69,6 +72,7 @@ export const NetWorthControls = ({
                     ? settings.annualReturnRate
                     : ""
                 }
+                disabled={readOnly}
                 onChange={(event) =>
                   handleNumberChange("annualReturnRate", event.target.value)
                 }
@@ -86,6 +90,7 @@ export const NetWorthControls = ({
                     ? settings.inflationRate
                     : ""
                 }
+                disabled={readOnly}
                 onChange={(event) =>
                   handleNumberChange("inflationRate", event.target.value)
                 }
@@ -117,6 +122,7 @@ export const NetWorthControls = ({
           <select
             className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
             value={settings.projectionYears}
+            disabled={readOnly}
             onChange={(event) =>
               handleNumberChange("projectionYears", event.target.value)
             }

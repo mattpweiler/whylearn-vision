@@ -38,6 +38,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
   const [taskEdit, setTaskEdit] = useState({
     title: "",
   });
+  const [openTaskMenuId, setOpenTaskMenuId] = useState<string | null>(null);
 
   const habitDraftInitial = { name: "", description: "", lifeAreaId: "" };
   const [habitDraft, setHabitDraft] = useState(habitDraftInitial);
@@ -98,7 +99,8 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
       target.closest("button") ||
       target.closest("input") ||
       target.closest("select") ||
-      target.closest("textarea")
+      target.closest("textarea") ||
+      target.closest("details")
     ) {
       return;
     }
@@ -525,30 +527,81 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
                   </div>
                 </div>
                 <div className="flex gap-2 text-xs font-medium text-slate-500">
-                  {editingTaskId !== task.id && (
+                  <div className="hidden items-center gap-2 md:flex">
+                    {editingTaskId !== task.id && (
+                      <button
+                        className="cursor-pointer rounded-full px-3 py-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                        onClick={() => startEdit(task)}
+                      >
+                        Edit
+                      </button>
+                    )}
                     <button
-                      className="cursor-pointer rounded-full px-3 py-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
-                      onClick={() => startEdit(task)}
+                      className={`cursor-pointer rounded-full px-3 py-1 ${
+                        isDone
+                          ? "text-emerald-700 hover:bg-emerald-100"
+                          : "transition-colors hover:bg-slate-100 hover:text-slate-900"
+                      }`}
+                      onClick={() => moveToTomorrow(task)}
                     >
-                      Edit
+                      Move to tomorrow ↗
                     </button>
-                  )}
-                  <button
-                    className={`cursor-pointer rounded-full px-3 py-1 ${
-                      isDone
-                        ? "text-emerald-700 hover:bg-emerald-100"
-                        : "transition-colors hover:bg-slate-100 hover:text-slate-900"
-                    }`}
-                    onClick={() => moveToTomorrow(task)}
-                  >
-                    Move to tomorrow ↗
-                  </button>
-                  <button
-                    className="cursor-pointer rounded-full px-3 py-1 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600"
-                    onClick={() => deleteTask(task.id)}
-                  >
-                    Delete
-                  </button>
+                    <button
+                      className="cursor-pointer rounded-full px-3 py-1 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600"
+                      onClick={() => deleteTask(task.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                  <div className="relative md:hidden">
+                    <button
+                      type="button"
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-lg text-slate-500 transition hover:bg-slate-100"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setOpenTaskMenuId((prev) => (prev === task.id ? null : task.id));
+                      }}
+                      aria-label="Open task actions"
+                    >
+                      ⋯
+                    </button>
+                    {openTaskMenuId === task.id ? (
+                      <div className="absolute right-0 z-20 mt-2 w-44 rounded-2xl border border-slate-200 bg-white p-2 text-sm shadow-lg">
+                        {editingTaskId !== task.id && (
+                          <button
+                            className="w-full rounded-lg px-3 py-2 text-left text-slate-700 transition hover:bg-slate-100"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              startEdit(task);
+                              setOpenTaskMenuId(null);
+                            }}
+                          >
+                            Edit
+                          </button>
+                        )}
+                        <button
+                          className="w-full rounded-lg px-3 py-2 text-left text-slate-700 transition hover:bg-slate-100"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            moveToTomorrow(task);
+                            setOpenTaskMenuId(null);
+                          }}
+                        >
+                          Move to tomorrow
+                        </button>
+                        <button
+                          className="w-full rounded-lg px-3 py-2 text-left text-red-500 transition hover:bg-red-50"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            deleteTask(task.id);
+                            setOpenTaskMenuId(null);
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             );
