@@ -67,12 +67,28 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     scheduledDate: "",
     priority: "medium",
   });
+  const [openTaskMenuId, setOpenTaskMenuId] = useState<string | null>(null);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [expandedPastDates, setExpandedPastDates] = useState<Record<string, boolean>>({});
   const [includeNext7Days, setIncludeNext7Days] = useState(false);
   const [dayModalDate, setDayModalDate] = useState<string | null>(null);
   const [dayModalTaskTitle, setDayModalTaskTitle] = useState("");
+
+  useEffect(() => {
+    if (!openTaskMenuId) return;
+    const handler = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.closest(`[data-task-menu-id="${openTaskMenuId}"]`)) return;
+      setOpenTaskMenuId(null);
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [openTaskMenuId]);
 
   const normalizedAnchor = useMemo(
     () => normalizeDate(anchorDate),
@@ -480,7 +496,8 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
       target.closest("button") ||
       target.closest("input") ||
       target.closest("select") ||
-      target.closest("textarea")
+      target.closest("textarea") ||
+      target.closest("details")
     ) {
       return;
     }
@@ -585,7 +602,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     return (
       <div
         key={task.id}
-        className={`flex cursor-pointer flex-wrap items-start justify-between gap-3 rounded-2xl border px-4 py-3 transition-colors ${
+        className={`relative flex cursor-pointer flex-wrap items-start justify-between gap-3 rounded-2xl border px-4 py-3 transition-colors ${
           isDone
             ? "border-emerald-100 bg-emerald-50/70 hover:border-emerald-200 hover:bg-emerald-50"
             : "border-slate-100 bg-white/60 hover:border-slate-200 hover:bg-white"
@@ -664,53 +681,130 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                     }))
                   }
                 />
-              <button
-                className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white disabled:opacity-50"
-                onClick={saveTaskEdit}
-                disabled={!taskEditDraft.title.trim()}
-              >
-                Save
-              </button>
-              <button
-                className="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600"
-                onClick={cancelTaskEdit}
-              >
-                Cancel
-              </button>
+                <button
+                  className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white disabled:opacity-50"
+                  onClick={saveTaskEdit}
+                  disabled={!taskEditDraft.title.trim()}
+                >
+                  Save
+                </button>
+                <button
+                  className="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600"
+                  onClick={cancelTaskEdit}
+                >
+                  Cancel
+                </button>
               </>
             ) : (
               <>
-                <input
-                  type="date"
-                  className="rounded-xl border border-slate-200 px-3 py-1 text-sm sm:w-40"
-                  value={scheduledDate}
-                  onChange={(e) => moveTaskToDate(task.id, e.target.value)}
-                />
-                <button
-                  className="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600"
-                  onClick={() => moveTaskToBacklog(task.id)}
-                  disabled={!scheduledDate}
-                >
-                  Unschedule
-                </button>
-              <button
-                className="rounded-full border border-slate-200 p-2 text-slate-600"
-                onClick={() => startTaskEdit(task)}
-                aria-label="Edit task"
-              >
-                ✏️
-              </button>
-              <button
-                className="rounded-full p-2 text-red-500"
-                onClick={() => deleteTask(task.id)}
-                aria-label="Delete task"
-              >
-                <TrashIcon className="h-4 w-4" />
-              </button>
-            </>
-          )}
+                <div className="hidden items-center gap-2 sm:flex sm:flex-wrap">
+                  <input
+                    type="date"
+                    className="rounded-xl border border-slate-200 px-3 py-1 text-sm sm:w-40"
+                    value={scheduledDate}
+                    onChange={(e) => moveTaskToDate(task.id, e.target.value)}
+                  />
+                  <button
+                    className="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600"
+                    onClick={() => moveTaskToBacklog(task.id)}
+                    disabled={!scheduledDate}
+                  >
+                    Unschedule
+                  </button>
+                  <button
+                    className="rounded-full border border-slate-200 p-2 text-slate-600"
+                    onClick={() => startTaskEdit(task)}
+                    aria-label="Edit task"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    className="rounded-full p-2 text-red-500"
+                    onClick={() => deleteTask(task.id)}
+                    aria-label="Delete task"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+        {!isEditing && (
+          <div className="absolute right-3 top-3 sm:hidden" data-task-menu-id={task.id}>
+            <div className="relative">
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-lg text-slate-500 transition hover:bg-slate-100"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setOpenTaskMenuId((prev) => (prev === task.id ? null : task.id));
+                }}
+                aria-label="Open task actions"
+                data-task-menu-id={task.id}
+              >
+                ⋯
+              </button>
+              {openTaskMenuId === task.id ? (
+                <div
+                  className="absolute right-0 z-20 mt-2 w-48 rounded-2xl border border-slate-200 bg-white p-2 text-sm shadow-lg"
+                  data-task-menu-id={task.id}
+                >
+                  <label className="flex items-center justify-between gap-2 rounded-lg px-2 py-2 text-left text-slate-700" data-task-menu-id={task.id}>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Set date
+                    </span>
+                    <input
+                      type="date"
+                      className="rounded-xl border border-slate-200 px-2 py-1 text-xs text-slate-900"
+                      value={scheduledDate}
+                      onChange={(event) => {
+                        event.stopPropagation();
+                        moveTaskToDate(task.id, event.target.value);
+                        setOpenTaskMenuId(null);
+                      }}
+                      data-task-menu-id={task.id}
+                    />
+                  </label>
+                  <button
+                    className="w-full rounded-lg px-3 py-2 text-left text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      moveTaskToBacklog(task.id);
+                      setOpenTaskMenuId(null);
+                    }}
+                    disabled={!scheduledDate}
+                    data-task-menu-id={task.id}
+                  >
+                    Unschedule
+                  </button>
+                  <button
+                    className="w-full rounded-lg px-3 py-2 text-left text-slate-700 transition hover:bg-slate-100"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      startTaskEdit(task);
+                      setOpenTaskMenuId(null);
+                    }}
+                    data-task-menu-id={task.id}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="w-full rounded-lg px-3 py-2 text-left text-red-500 transition hover:bg-red-50"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      deleteTask(task.id);
+                      setOpenTaskMenuId(null);
+                    }}
+                    data-task-menu-id={task.id}
+                  >
+                    Delete
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
