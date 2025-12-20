@@ -2,12 +2,7 @@
 
 import { MouseEvent, useMemo, useState } from "react";
 import { AppState, Task } from "@/lib/types";
-import {
-  generateId,
-  todayKey,
-  taskEffectiveDate,
-  isTaskCompleted,
-} from "@/lib/utils";
+import { todayKey, taskEffectiveDate, isTaskCompleted } from "@/lib/utils";
 
 interface ViewProps {
   state: AppState;
@@ -48,25 +43,11 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
 
   const saveFocus = () => {
     if (!focusDraft.trim()) return;
-    const now = new Date().toISOString();
     updateState((prev) => {
       const nextFocus = { ...prev.dailyFocus, [today]: focusDraft.trim() };
-      let reflections = prev.reflections;
-      if (!prev.dailyFocus[today]) {
-        reflections = [
-          ...reflections,
-          {
-            id: generateId(),
-            type: "daily",
-            content: { focus: focusDraft.trim(), date: today },
-            createdAt: now,
-          },
-        ];
-      }
       return {
         ...prev,
         dailyFocus: nextFocus,
-        reflections,
       };
     });
     setEditingFocus(false);

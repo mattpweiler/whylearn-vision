@@ -306,7 +306,7 @@ export const OnboardingFlow = () => {
               Sketch your big yearly goals
             </p>
             <p className="text-slate-600">
-              Up to three “big rocks” you care about hitting this year.
+              Up to three big goals you care about hitting this year.
             </p>
           </div>
           <div className="space-y-3">

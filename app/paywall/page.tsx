@@ -20,9 +20,9 @@ type SubscriptionResponse = {
 };
 
 const featureList = [
-  "AI mentor with personalized guidance",
   "Goal planning, habit tracking, and reflections",
-  "Secure Supabase sync for your workspace",
+  "Financial Freedom Calculator and Monthly Profit Tracker",
+  "Productivity helpers to help you plan and win each day"
 ];
 
 const PaywallContent = () => {
@@ -185,34 +185,7 @@ const PaywallContent = () => {
                 ))}
               </ul>
             </div>
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-6 py-5">
-              <p className="text-sm font-semibold text-slate-700">
-                Demo stays open
-              </p>
-              <p className="mt-2 text-sm text-slate-600">
-                Need to explore first? The live demo remains available without a
-                subscription.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold">
-                <Link
-                  href="/demo"
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-slate-700 transition hover:-translate-y-0.5"
-                >
-                  Explore demo
-                </Link>
-                <button
-                  type="button"
-                  onClick={openBillingPortal}
-                  disabled={!subscription?.stripe_customer_id || isRedirecting}
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-slate-700 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Manage billing
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl mt-6 border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-semibold text-slate-700">Your status</p>
             <p className="mt-2 text-lg font-semibold text-slate-900">
               {hasActiveSubscription
@@ -240,13 +213,13 @@ const PaywallContent = () => {
               type="button"
               onClick={startCheckout}
               disabled={isLoading || hasActiveSubscription || isRedirecting}
-              className="mt-6 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-900/90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-6 w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isRedirecting
-                ? "Sending you to Stripe…"
-                : hasActiveSubscription
-                  ? "You are subscribed"
-                  : "Subscribe to continue"}
+              ? "Sending you to Stripe…"
+              : hasActiveSubscription
+                ? "You are subscribed"
+                : "Subscribe to continue"}
             </button>
             <button
               type="button"
@@ -256,6 +229,32 @@ const PaywallContent = () => {
             >
               Refresh status
             </button>
+          </div>
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-6 py-5">
+              <p className="text-sm font-semibold text-slate-700">
+                Demo stays open
+              </p>
+              <p className="mt-2 text-sm text-slate-600">
+                Need to explore first? The live demo remains available without a
+                subscription.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold">
+                <Link
+                  href="/demo"
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-slate-700 transition hover:-translate-y-0.5"
+                >
+                  Explore demo
+                </Link>
+                <button
+                  type="button"
+                  onClick={openBillingPortal}
+                  disabled={!subscription?.stripe_customer_id || isRedirecting}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-slate-700 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Manage billing
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

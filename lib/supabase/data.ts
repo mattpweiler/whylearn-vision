@@ -82,6 +82,7 @@ export const fetchSupabaseAppState = async (
     habitLogsResult,
     tasksResult,
     reflectionsResult,
+    dailyFocusResult,
     aiSessionsResult,
     aiMessagesResult,
   ] = await Promise.all([
@@ -140,6 +141,11 @@ export const fetchSupabaseAppState = async (
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
     supabase
+      .from("daily_focus")
+      .select("focus_date, note")
+      .eq("user_id", userId)
+      .order("focus_date", { ascending: false }),
+    supabase
       .from("ai_sessions")
       .select("id, topic, created_at, updated_at")
       .eq("user_id", userId)
@@ -164,6 +170,7 @@ export const fetchSupabaseAppState = async (
   assertNoError(habitLogsResult);
   assertNoError(tasksResult);
   assertNoError(reflectionsResult);
+  assertNoError(dailyFocusResult);
   assertNoError(aiSessionsResult);
   assertNoError(aiMessagesResult);
 
@@ -299,7 +306,15 @@ export const fetchSupabaseAppState = async (
       createdAt: session.created_at,
       updatedAt: session.updated_at,
     })),
-    dailyFocus: {},
+    dailyFocus: (dailyFocusResult.data ?? []).reduce<Record<string, string>>(
+      (acc, entry) => {
+        if (entry.focus_date && entry.note) {
+          acc[entry.focus_date] = entry.note;
+        }
+        return acc;
+      },
+      {}
+    ),
   };
 
   return {

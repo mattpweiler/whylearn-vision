@@ -1,26 +1,42 @@
 "use server";
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 
-const createAdminClient = () => {
-  const url =
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
-  const serviceKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ??
-    process.env.SUPABASE_SERVICE_KEY ??
-    process.env.SUPABASE_SERVICE_ROLE ??
-    "";
-  if (!url || !serviceKey) {
-    throw new Error("Missing Supabase configuration for feedback endpoint.");
-  }
-  return createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-};
+const createSupabaseServerClient = (request: NextRequest) =>
+  createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set() {
+          /* no-op */
+        },
+        remove() {
+          /* no-op */
+        },
+      },
+    }
+  );
+
+const MAX_REASON_LENGTH = 2_000;
+const FEEDBACK_COOLDOWN_MS = 60 * 1000;
 
 export const POST = async (request: NextRequest) => {
   try {
+    const supabase = createSupabaseServerClient(request);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const payload = (await request.json()) as {
       name?: string;
       email?: string;
@@ -37,8 +53,34 @@ export const POST = async (request: NextRequest) => {
       );
     }
 
-    const supabase = createAdminClient();
+    if (reason.length > MAX_REASON_LENGTH) {
+      return NextResponse.json(
+        { error: "Feedback is too long." },
+        { status: 413 }
+      );
+    }
+
+    const { data: recentSubmission } = await supabase
+      .from("feedback")
+      .select("created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (
+      recentSubmission?.created_at &&
+      Date.now() - new Date(recentSubmission.created_at).getTime() <
+        FEEDBACK_COOLDOWN_MS
+    ) {
+      return NextResponse.json(
+        { error: "You are sending feedback too quickly. Please wait a moment." },
+        { status: 429 }
+      );
+    }
+
     const { error } = await supabase.from("feedback").insert({
+      user_id: user.id,
       name,
       email,
       reason,

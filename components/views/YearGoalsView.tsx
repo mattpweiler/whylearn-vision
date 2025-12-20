@@ -153,15 +153,23 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
   return (
     <div className="space-y-6">
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-2">
-          <p className="text-lg font-semibold text-slate-900">Big yearly goals</p>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <p className="text-lg font-semibold text-slate-900">Big yearly goals</p>
+            <button
+              type="button"
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-xs font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
+              onClick={() => setShowGoalTips((prev) => !prev)}
+              aria-label="Goal inspiration tips"
+            >
+              i
+            </button>
+          </div>
           <button
-            type="button"
-            className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-xs font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
-            onClick={() => setShowGoalTips((prev) => !prev)}
-            aria-label="Goal inspiration tips"
+            className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500"
+            onClick={() => setShowNewGoalForm(true)}
           >
-            i
+            + New goal
           </button>
         </div>
         {showGoalTips && (
@@ -340,74 +348,78 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
           )}
         </div>
       </section>
-
-      <button
-        className="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 transition cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-900 hover:cursor-pointer"
-        onClick={() => setShowNewGoalForm((prev) => !prev)}
-      >
-        {showNewGoalForm ? "Cancel new goal" : "+ New year goal"}
-      </button>
-
       {showNewGoalForm && (
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-lg font-semibold text-slate-900">New goal</p>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="text-sm font-medium text-slate-600">
-              Title
-              <input
-                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-                value={form.title}
-                onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                placeholder="Let's Start on That Dream"
-              />
-            </label>
-            <label className="text-sm font-medium text-slate-600">
-              Priority
-              <select
-                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-                value={form.priority}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    priority: e.target.value as PriorityLevel,
-                  }))
-                }
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <p className="text-lg font-semibold text-slate-900">New goal</p>
+              <button
+                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                onClick={() => setShowNewGoalForm(false)}
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </label>
-            <label className="text-sm font-medium text-slate-600">
-              Target date
-              <input
-                type="date"
-                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-                value={form.targetDate}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, targetDate: e.target.value }))
-                }
-              />
-            </label>
-            <label className="md:col-span-2 text-sm font-medium text-slate-600">
-              Description
-              <textarea
-                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-                rows={3}
-                value={form.description}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, description: e.target.value }))
-                }
-              />
-            </label>
+                Close
+              </button>
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <label className="text-sm font-medium text-slate-600">
+                Title
+                <input
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+                  value={form.title}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, title: e.target.value }))
+                  }
+                  placeholder="Let's Start on That Dream"
+                />
+              </label>
+              <label className="text-sm font-medium text-slate-600">
+                Priority
+                <select
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+                  value={form.priority}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      priority: e.target.value as PriorityLevel,
+                    }))
+                  }
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
+              <label className="text-sm font-medium text-slate-600">
+                Target date
+                <input
+                  type="date"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+                  value={form.targetDate}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, targetDate: e.target.value }))
+                  }
+                />
+              </label>
+              <label className="md:col-span-2 text-sm font-medium text-slate-600">
+                Description
+                <textarea
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+                  rows={3}
+                  value={form.description}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                />
+              </label>
+            </div>
+            <button
+              className="mt-6 w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
+              onClick={addGoal}
+            >
+              Create goal
+            </button>
           </div>
-          <button
-            className="mt-4 w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white"
-            onClick={addGoal}
-          >
-            Create goal
-          </button>
-        </section>
+        </div>
       )}
 
       {completedGoals.length > 0 && (

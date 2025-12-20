@@ -72,6 +72,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [expandedPastDates, setExpandedPastDates] = useState<Record<string, boolean>>({});
   const [includeNext7Days, setIncludeNext7Days] = useState(false);
+  const [hidePastDates, setHidePastDates] = useState(true);
   const [dayModalDate, setDayModalDate] = useState<string | null>(null);
   const [dayModalTaskTitle, setDayModalTaskTitle] = useState("");
 
@@ -868,18 +869,24 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
           </div>
         </div>
 
-        <div className="mt-6">
-          <div className="mb-2 grid grid-cols-7 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="mt-6 max-h-[60vh] overflow-y-auto md:max-h-none">
+          <div className="mb-2 hidden grid-cols-7 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 md:grid">
             {weekdayLabels.map((label) => (
               <span key={label}>{label}</span>
             ))}
           </div>
           {mode === "week" ? (
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-7 gap-2">
               {weekDates.map((dateKey) => {
                 const dayTasks = tasksByDate[dateKey] ?? [];
                 const isSelected = selectedDate === dateKey;
                 const isToday = today === dateKey;
+                const displayLabel = parseDateKey(dateKey).toLocaleDateString(undefined, {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                });
+                const dayNumber = dateKey.split("-")[2];
                 return (
                   <button
                     key={dateKey}
@@ -890,18 +897,21 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                     }`}
                     onClick={() => openDayModal(dateKey)}
                     onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      handleTaskDrop(dateKey);
-                    }}
-                  >
-                    <div className="flex items-center justify-between text-sm font-semibold">
-                      <span>{dateKey.split("-")[2]}</span>
-                      {isToday && (
-                        <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-xs text-white">
-                          Today
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        handleTaskDrop(dateKey);
+                      }}
+                    >
+                      <div className="flex items-center justify-between text-sm font-semibold">
+                        <span>
+                          <span className="md:hidden">{displayLabel}</span>
+                          <span className="hidden md:inline">{dayNumber}</span>
                         </span>
-                      )}
+                        {isToday && (
+                          <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-xs text-white">
+                            Today
+                          </span>
+                        )}
                     </div>
                     <div className="mt-2 max-h-28 space-y-1 overflow-y-auto text-xs text-slate-600">
                       {dayTasks.length === 0 ? (
@@ -928,11 +938,17 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
           ) : (
             <div className="space-y-2">
               {monthCalendarRows.map((row, idx) => (
-                <div key={idx} className="grid grid-cols-7 gap-2">
+                <div key={idx} className="grid grid-cols-2 md:grid-cols-7 gap-2">
                   {row.map((day) => {
                     const dayTasks = tasksByDate[day.key] ?? [];
                     const isSelected = selectedDate === day.key;
                     const isToday = today === day.key;
+                    const displayLabel = parseDateKey(day.key).toLocaleDateString(undefined, {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    });
+                    const dayNumber = day.key.split("-")[2];
                     return (
                       <button
                         key={day.key}
@@ -943,18 +959,21 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                         } ${day.inMonth ? "" : "opacity-60"}`}
                         onClick={() => openDayModal(day.key, !day.inMonth)}
                         onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          handleTaskDrop(day.key);
-                        }}
-                      >
-                        <div className="flex items-center justify-between font-semibold">
-                          <span>{day.key.split("-")[2]}</span>
-                          {isToday && (
-                            <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] text-white">
-                              Today
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            handleTaskDrop(day.key);
+                          }}
+                        >
+                          <div className="flex items-center justify-between font-semibold">
+                            <span>
+                              <span className="md:hidden">{displayLabel}</span>
+                              <span className="hidden md:inline">{dayNumber}</span>
                             </span>
-                          )}
+                            {isToday && (
+                              <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] text-white">
+                                Today
+                              </span>
+                            )}
                         </div>
                         <div className="mt-2 max-h-24 space-y-1 overflow-y-auto text-[11px] text-slate-600">
                           {dayTasks.length === 0 ? (
@@ -1026,7 +1045,15 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
             </p>
           </div>
         </div>
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-4">
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
+            <input
+              type="checkbox"
+              checked={hidePastDates}
+              onChange={(e) => setHidePastDates(e.target.checked)}
+            />
+            Hide past dates
+          </label>
           <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
             <input
               type="checkbox"
@@ -1044,7 +1071,9 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
         </div>
         <div className="mt-6 space-y-4">
           {!showUnscheduledOnly &&
-            groupedTasks.sortedDates.map((dateKey) => {
+            groupedTasks.sortedDates
+              .filter((dateKey) => (hidePastDates ? dateKey >= todayDateKey : true))
+              .map((dateKey) => {
               const dayTasks = groupedTasks.scheduled[dateKey] ?? [];
               if (dayTasks.length === 0) return null;
               const isPast = dateKey < todayDateKey;

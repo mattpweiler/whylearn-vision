@@ -9,6 +9,7 @@ type ReflectionRow = ReturnType<typeof serializeReflection>;
 type LifeAreaScoreRow = ReturnType<typeof serializeLifeAreaScore>;
 type AiSessionRow = ReturnType<typeof serializeAiSession>;
 type AiMessageRow = ReturnType<typeof serializeAiMessage>;
+type DailyFocusRow = ReturnType<typeof serializeDailyFocus>;
 
 const deepEqual = (a: unknown, b: unknown) =>
   JSON.stringify(a) === JSON.stringify(b);
@@ -99,6 +100,16 @@ const serializeReflection = (
   energy_score: reflection.energyScore ?? null,
   primary_life_area_id: reflection.primaryLifeAreaId ?? null,
   created_at: reflection.createdAt,
+});
+
+const serializeDailyFocus = (
+  focusDate: string,
+  note: string,
+  userId: string
+) => ({
+  user_id: userId,
+  focus_date: focusDate,
+  note,
 });
 
 const serializeAiSession = (
@@ -218,6 +229,7 @@ export const persistWorkspaceChanges = async ({
   await syncReflections({ supabase, previous, next, userId });
   await syncAiSessions({ supabase, previous, next, userId });
   await syncAiMessages({ supabase, previous, next, userId });
+  await syncDailyFocus({ supabase, previous, next, userId });
   return { profileSynced, settingsSynced };
 };
 
@@ -470,5 +482,54 @@ const syncAiMessages = async ({
     await supabase
       .from("ai_messages")
       .insert(newMessages as AiMessageRow[]);
+  }
+};
+
+const syncDailyFocus = async ({
+  supabase,
+  previous,
+  next,
+  userId,
+}: {
+  supabase: SupabaseClient;
+  previous: AppState;
+  next: AppState;
+  userId: string;
+}) => {
+  const prevEntries = previous.dailyFocus;
+  const nextEntries = next.dailyFocus;
+
+  const upserts: DailyFocusRow[] = [];
+  const deletions: string[] = [];
+
+  const prevKeys = new Set(Object.keys(prevEntries));
+  const nextKeys = new Set(Object.keys(nextEntries));
+
+  nextKeys.forEach((date) => {
+    const note = nextEntries[date];
+    if (!note) return;
+    if (prevEntries[date] !== note) {
+      upserts.push(serializeDailyFocus(date, note, userId));
+    }
+  });
+
+  prevKeys.forEach((date) => {
+    if (!nextKeys.has(date)) {
+      deletions.push(date);
+    }
+    if (nextEntries[date] === "") {
+      deletions.push(date);
+    }
+  });
+
+  if (upserts.length > 0) {
+    await supabase.from("daily_focus").upsert(upserts as DailyFocusRow[]);
+  }
+  if (deletions.length > 0) {
+    await supabase
+      .from("daily_focus")
+      .delete()
+      .eq("user_id", userId)
+      .in("focus_date", deletions);
   }
 };
