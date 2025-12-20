@@ -15,6 +15,7 @@ const viewOptions: { key: ViewKey; label: string }[] = [
   { key: "direction", label: "Direction" },
   { key: "financial_freedom", label: "Financial Freedom" },
   { key: "financial_profit", label: "Monthly Profit" },
+  { key: "feature_vote", label: "Vote on Next Feature" },
   { key: "next_steps", label: "What are My Next Steps? (coming soon)" },
   { key: "settings", label: "Settings" },
 ];

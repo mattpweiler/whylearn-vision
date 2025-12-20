@@ -2,7 +2,7 @@
 
 import { MouseEvent, useMemo, useState } from "react";
 import { AppState, Task } from "@/lib/types";
-import { todayKey, taskEffectiveDate, isTaskCompleted } from "@/lib/utils";
+import { todayKey, taskEffectiveDate, isTaskCompleted, generateId } from "@/lib/utils";
 
 interface ViewProps {
   state: AppState;

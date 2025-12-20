@@ -22,6 +22,7 @@ const allowedHomeViews: ViewKey[] = [
   "direction",
   "financial_freedom",
   "financial_profit",
+  "feature_vote",
   "settings",
 ];
 

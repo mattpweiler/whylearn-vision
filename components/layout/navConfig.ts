@@ -27,6 +27,11 @@ export const navItems: {
     icon: "📈",
   },
   {
+    key: "feature_vote",
+    label: "Vote on Next Feature",
+    icon: "🗳️",
+  },
+  {
     key: "next_steps",
     label: "What are My Next Steps?",
     icon: "🤔",

@@ -14,6 +14,7 @@ import { TodayView } from "@/components/views/TodayView";
 import { YearGoalsView } from "@/components/views/YearGoalsView";
 import { MonthlyProfitView } from "@/components/views/MonthlyProfitView";
 import { NextStepsView } from "@/components/views/NextStepsView";
+import { FeatureVoteView } from "@/components/views/FeatureVoteView";
 import { ViewKey } from "@/lib/types";
 import { DEMO_ALLOWED_VIEWS } from "@/components/layout/navConfig";
 
@@ -45,6 +46,10 @@ const meta: Record<ViewKey, { title: string; subtitle: string }> = {
   financial_profit: {
     title: "Monthly Profit",
     subtitle: "Log actual income vs. expenses and measure profit trends.",
+  },
+  feature_vote: {
+    title: "Vote on Next Feature",
+    subtitle: "Tell us what to build next. One vote per customer.",
   },
   settings: {
     title: "Settings",
@@ -114,6 +119,8 @@ export const AppShell = () => {
         return <MonthlyProfitView readOnly={isDemo} />;
       case "next_steps":
         return <NextStepsView />;
+      case "feature_vote":
+        return <FeatureVoteView />;
       case "settings":
         return <SettingsView state={state} updateState={updateState} />;
       case "today":

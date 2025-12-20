@@ -154,4 +154,5 @@ export type ViewKey =
   | "financial_freedom"
   | "financial_profit"
   | "next_steps"
+  | "feature_vote"
   | "settings";
