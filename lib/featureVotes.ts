@@ -27,6 +27,13 @@ export const FEATURE_VOTE_OPTIONS: FeatureVoteOption[] = [
       "More Detailed Budgeting, Expense Tracking, Investment Tracking, and Financial Goal Planning.",
     impact: "Tell us below any additional ideas.",
   },
+  {
+    key: "community_feature",
+    title: "Community Tab Where we Post Progress on the Projects We're Working On",
+    description:
+      "A place to share updates, get feedback, and connect with others using the app.",
+    impact: "Build motivation and accountability through social connection.",
+  },
 ];
 
 export const findFeatureVoteOption = (key: string) =>

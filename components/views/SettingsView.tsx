@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AppState, ViewKey } from "@/lib/types";
+import { useSupabase } from "@/components/providers/SupabaseProvider";
 
 interface ViewProps {
   state: AppState;
@@ -21,10 +22,15 @@ const viewOptions: { key: ViewKey; label: string }[] = [
 ];
 
 export const SettingsView = ({ state, updateState }: ViewProps) => {
+  const { supabase } = useSupabase();
   const [profileDraft, setProfileDraft] = useState(state.profile);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isBillingLoading, setIsBillingLoading] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordStatus, setPasswordStatus] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const saveProfile = () => {
     updateState((prev) => ({ ...prev, profile: profileDraft }));
@@ -78,6 +84,31 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
           : "Unable to open billing portal right now."
       );
       setIsBillingLoading(false);
+    }
+  };
+
+  const updatePassword = async () => {
+    setPasswordError(null);
+    setPasswordStatus(null);
+    if (!newPassword || newPassword.length < 8) {
+      setPasswordError("Password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setPasswordStatus("Password updated.");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      console.error("Password update failed", err);
+      setPasswordError(
+        err instanceof Error ? err.message : "Unable to update password right now."
+      );
     }
   };
 
@@ -201,6 +232,53 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
             disabled={isBillingLoading}
           >
             {isBillingLoading ? "Opening portal…" : "Open billing portal"}
+          </button>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-lg font-semibold text-slate-900">Security</p>
+        <p className="mt-2 text-sm text-slate-600">
+          Change your password while signed in. If you forget it, use “Forgot password?” on the sign-in page.
+        </p>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <label className="block text-sm font-medium text-slate-700">
+            New password
+            <input
+              type="password"
+              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              minLength={8}
+            />
+          </label>
+          <label className="block text-sm font-medium text-slate-700">
+            Confirm password
+            <input
+              type="password"
+              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              minLength={8}
+            />
+          </label>
+        </div>
+        {passwordError ? (
+          <p className="mt-2 text-sm text-red-600" role="alert">
+            {passwordError}
+          </p>
+        ) : null}
+        {passwordStatus ? (
+          <p className="mt-2 text-sm text-emerald-700" role="status">
+            {passwordStatus}
+          </p>
+        ) : null}
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-900/90"
+            onClick={updatePassword}
+          >
+            Update password
           </button>
         </div>
       </section>

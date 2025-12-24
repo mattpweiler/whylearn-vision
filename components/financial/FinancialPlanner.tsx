@@ -328,7 +328,12 @@ export const FinancialPlanner = ({
   if (isAuthenticated && remoteData.isLoading) {
     return (
       <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm">
-        Loading your financial data…
+        <div className="space-y-2">
+          <p>Loading your financial data…</p>
+          <p className="text-xs text-slate-500">
+            If it seems stuck, email <a className="font-semibold text-slate-900" href="mailto:whylearnwednesdays@gmail.com">whylearnwednesdays@gmail.com</a> and we'll help.
+          </p>
+        </div>
       </div>
     );
   }

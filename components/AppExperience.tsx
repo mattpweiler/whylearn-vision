@@ -23,7 +23,12 @@ export const AppExperience = () => {
   if (!isHydrated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-600">
-        Loading your Vision…
+        <div className="space-y-2 text-center">
+          <p>Loading your Vision…</p>
+          <p className="text-xs text-slate-500">
+            If this hangs, email <a className="font-semibold text-slate-900" href="mailto:whylearnwednesdays@gmail.com">whylearnwednesdays@gmail.com</a> and we'll help.
+          </p>
+        </div>
       </div>
     );
   }

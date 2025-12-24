@@ -28,6 +28,7 @@ export const AuthForm = ({ mode }: { mode: AuthMode }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [resetStatus, setResetStatus] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resolveRedirectTarget = (override?: string) => {
@@ -42,6 +43,7 @@ export const AuthForm = ({ mode }: { mode: AuthMode }) => {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
+    setResetStatus(null);
     setIsSubmitting(true);
     try {
       const payload = { email, password };
@@ -78,6 +80,35 @@ export const AuthForm = ({ mode }: { mode: AuthMode }) => {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const sendPasswordReset = async () => {
+    setError(null);
+    setResetStatus(null);
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ??
+      (typeof window !== "undefined" ? window.location.origin : "");
+    if (!email) {
+      setError("Enter your email to receive the reset link.");
+      return;
+    }
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        email,
+        {
+          redirectTo: `${baseUrl.replace(/\/$/, "")}/auth/reset-password`,
+        }
+      );
+      if (resetError) throw resetError;
+      setResetStatus("Password reset link sent. Check your email.");
+    } catch (err) {
+      console.error("Password reset request failed", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to send the reset link right now."
+      );
     }
   };
 
@@ -130,11 +161,37 @@ export const AuthForm = ({ mode }: { mode: AuthMode }) => {
             placeholder="••••••••"
           />
         </div>
+        <div className="flex items-center justify-between text-sm">
+          <Link
+            href={copy.link}
+            className="font-semibold text-slate-900"
+          >
+            {mode === "signIn" ? "Create one" : "Sign in"}
+          </Link>
+          {mode === "signIn" ? (
+            <button
+              type="button"
+              className="text-slate-600 hover:text-slate-900"
+              onClick={sendPasswordReset}
+              disabled={isSubmitting}
+            >
+              Forgot password?
+            </button>
+          ) : null}
+        </div>
         {error ? (
           <p className="text-sm text-red-600" role="alert">
             {error}
           </p>
         ) : null}
+        {resetStatus ? (
+          <p className="text-sm text-emerald-700" role="status">
+            {resetStatus}
+          </p>
+        ) : null}
+        <p className="text-xs text-slate-500">
+          If all else fails, email <a className="font-semibold text-slate-900" href="mailto:whylearnwednesdays@gmail.com">whylearnwednesdays@gmail.com</a> and we'll help.
+        </p>
         <button
           type="submit"
           disabled={isSubmitting}
@@ -144,10 +201,7 @@ export const AuthForm = ({ mode }: { mode: AuthMode }) => {
         </button>
       </form>
       <p className="mt-6 text-sm text-slate-500">
-        {copy.prompt}{" "}
-        <Link href={copy.link} className="font-semibold text-slate-900">
-          {mode === "signIn" ? "Create one" : "Sign in"}
-        </Link>
+        {copy.prompt}
       </p>
       <p className="mt-2 text-xs text-slate-400">
         By continuing you agree to receive helpful reminders and onboarding

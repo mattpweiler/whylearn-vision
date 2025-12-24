@@ -113,6 +113,9 @@ export const FeatureVoteView = () => {
     return (
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-sm text-slate-600">Loading your voting status…</p>
+        <p className="mt-1 text-xs text-slate-500">
+          If it gets stuck, email <a className="font-semibold text-slate-900" href="mailto:whylearnwednesdays@gmail.com">whylearnwednesdays@gmail.com</a> and we'll help.
+        </p>
       </div>
     );
   }

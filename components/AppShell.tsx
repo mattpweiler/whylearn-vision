@@ -151,6 +151,7 @@ export const AppShell = () => {
             title={currentView === "today" ? todayLabel : activeMeta.title}
             subtitle={activeMeta.subtitle}
             profileName={state.profile.displayName}
+            onGoToSettings={() => handleSelectView("settings")}
           />
         </div>
         <section>{viewComponent}</section>

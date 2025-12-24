@@ -9,10 +9,12 @@ export const PageHeader = ({
   title,
   subtitle,
   profileName,
+  onGoToSettings,
 }: {
   title: string;
   subtitle: string;
   profileName: string;
+  onGoToSettings?: () => void;
 }) => {
   const { session, supabase } = useSupabase();
   const router = useRouter();
@@ -40,7 +42,11 @@ export const PageHeader = ({
   }, [menuOpen]);
 
   const goToSettings = () => {
-    router.replace("/app?view=settings");
+    if (onGoToSettings) {
+      onGoToSettings();
+    } else {
+      router.replace("/app?view=settings");
+    }
     setMenuOpen(false);
   };
 
