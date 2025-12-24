@@ -24,6 +24,9 @@ const viewOptions: { key: ViewKey; label: string }[] = [
 export const SettingsView = ({ state, updateState }: ViewProps) => {
   const { supabase } = useSupabase();
   const [profileDraft, setProfileDraft] = useState(state.profile);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isBillingLoading, setIsBillingLoading] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
@@ -31,6 +34,7 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordStatus, setPasswordStatus] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [securityOpen, setSecurityOpen] = useState(false);
 
   const saveProfile = () => {
     updateState((prev) => ({ ...prev, profile: profileDraft }));
@@ -45,20 +49,28 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
 
   const deleteAccount = async () => {
     if (typeof window === "undefined") return;
-    const confirmDelete = window.confirm(
-      "This will permanently delete your account and all synced data. Are you sure?"
-    );
-    if (!confirmDelete) return;
+    setDeleteError(null);
+    const trimmedReason = deleteReason.trim();
+    if (!trimmedReason) {
+      setDeleteError("Please share your main reason before submitting.");
+      return;
+    }
     setIsDeleting(true);
     try {
       const response = await fetch("/api/account/delete", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: trimmedReason }),
       });
       if (!response.ok) throw new Error("Delete failed");
       window.location.href = "/";
     } catch (err) {
       console.error(err);
-      alert("Unable to delete account right now. Please try again later.");
+      setDeleteError(
+        err instanceof Error
+          ? err.message
+          : "Unable to delete account right now. Please try again later."
+      );
       setIsDeleting(false);
     }
   };
@@ -205,7 +217,10 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
               </p>
               <button
                 className="mt-3 w-full rounded-full border border-red-100 px-3 py-2 text-sm font-semibold text-red-600 transition hover:border-red-300 disabled:opacity-60"
-                onClick={deleteAccount}
+                onClick={() => {
+                  setDeleteError(null);
+                  setShowDeleteModal(true);
+                }}
                 disabled={isDeleting}
               >
                 {isDeleting ? "Deleting…" : "Delete account"}
@@ -237,51 +252,133 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-lg font-semibold text-slate-900">Security</p>
-        <p className="mt-2 text-sm text-slate-600">
-          Change your password while signed in. If you forget it, use “Forgot password?” on the sign-in page.
-        </p>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <label className="block text-sm font-medium text-slate-700">
-            New password
-            <input
-              type="password"
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              minLength={8}
-            />
-          </label>
-          <label className="block text-sm font-medium text-slate-700">
-            Confirm password
-            <input
-              type="password"
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              minLength={8}
-            />
-          </label>
-        </div>
-        {passwordError ? (
-          <p className="mt-2 text-sm text-red-600" role="alert">
-            {passwordError}
-          </p>
-        ) : null}
-        {passwordStatus ? (
-          <p className="mt-2 text-sm text-emerald-700" role="status">
-            {passwordStatus}
-          </p>
-        ) : null}
-        <div className="mt-4 flex flex-wrap gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-lg font-semibold text-slate-900">Security</p>
+            <p className="mt-1 text-sm text-slate-600">
+              Change your password while signed in. If you forget it, use “Forgot password?” on the sign-in page.
+            </p>
+          </div>
           <button
-            className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-900/90"
-            onClick={updatePassword}
+            type="button"
+            onClick={() => setSecurityOpen((prev) => !prev)}
+            className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:-translate-y-0.5"
           >
-            Update password
+            {securityOpen ? "Hide" : "Edit password"}
           </button>
         </div>
+
+        {securityOpen ? (
+          <div className="mt-4 space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="block text-sm font-medium text-slate-700">
+                New password
+                <input
+                  type="password"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  minLength={8}
+                />
+              </label>
+              <label className="block text-sm font-medium text-slate-700">
+                Confirm password
+                <input
+                  type="password"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  minLength={8}
+                />
+              </label>
+            </div>
+            {passwordError ? (
+              <p className="text-sm text-red-600" role="alert">
+                {passwordError}
+              </p>
+            ) : null}
+            {passwordStatus ? (
+              <p className="text-sm text-emerald-700" role="status">
+                {passwordStatus}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-3">
+              <button
+                className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-900/90"
+                onClick={updatePassword}
+              >
+                Update password
+              </button>
+            </div>
+          </div>
+        ) : null}
       </section>
+      {showDeleteModal ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-lg font-semibold text-slate-900">Confirm deletion</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  This sends a deletion request. Please share why you&apos;re leaving so we can improve.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:-translate-y-0.5"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteError(null);
+                  setDeleteReason("");
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <label className="mt-4 block text-sm font-medium text-slate-700">
+              Main reason for deleting
+              <textarea
+                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+                rows={3}
+                maxLength={500}
+                placeholder="e.g., missing a feature you need"
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+              />
+            </label>
+            {deleteError ? (
+              <p className="mt-2 text-sm text-red-600" role="alert">
+                {deleteError}
+              </p>
+            ) : null}
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                className="rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={deleteAccount}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting…" : "Send deletion request"}
+              </button>
+              <button
+                type="button"
+                className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteError(null);
+                  setDeleteReason("");
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

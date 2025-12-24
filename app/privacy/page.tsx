@@ -12,7 +12,7 @@ export default function PrivacyPolicyPage() {
         <h1 className="text-3xl font-semibold text-slate-900">Privacy Policy</h1>
         <p className="text-sm text-slate-500">
           This policy describes how WhyLearn handles your information when you
-          use the WhyLearn OS application.
+          use the WhyLearn Vision application.
         </p>
       </header>
 
@@ -34,8 +34,8 @@ export default function PrivacyPolicyPage() {
         </h2>
         <p>
           Your entries power the features inside WhyLearn so you can plan and
-          track progress. We do not sell your information or use it for
-          advertising. If you sign in, your data is synced securely to your
+          track progress. <b>We do not sell your information or use it for
+          advertising.</b> If you sign in, your data is synced securely to your
           account so you can access it across devices.
         </p>
       </section>
@@ -59,7 +59,7 @@ export default function PrivacyPolicyPage() {
         <p>
           You can export or delete your account data any time by contacting
           whylearnwednesdays@gmail.com. Inside the app you can also edit or remove any
-          entry manually—changes sync to your account immediately.
+          entry manually, changes sync to your account immediately.
         </p>
       </section>
 

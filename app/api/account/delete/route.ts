@@ -38,6 +38,17 @@ const createSupabaseAdminClient = () => {
 export const POST = async (request: NextRequest) => {
   try {
     const supabase = createSupabaseServerClient(request);
+    let userReason: string | undefined;
+    try {
+      const body = await request.json().catch(() => null);
+      const provided = body?.reason;
+      if (typeof provided === "string") {
+        userReason = provided.trim().slice(0, 500);
+      }
+    } catch {
+      userReason = undefined;
+    }
+
     const {
       data: { user },
       error,
@@ -61,10 +72,15 @@ export const POST = async (request: NextRequest) => {
       (user.user_metadata?.name as string | undefined) ??
       "Unknown user";
 
+    const reason =
+      userReason && userReason.length > 0
+        ? `Account deletion requested: ${userReason}`
+        : "Account deletion requested";
+
     const { error: feedbackError } = await adminClient.from("feedback").insert({
       name,
       email,
-      reason: "Account deletion requested",
+      reason,
     });
 
     if (feedbackError) throw feedbackError;
