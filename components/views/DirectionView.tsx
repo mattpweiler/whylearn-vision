@@ -207,17 +207,33 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-lg font-semibold text-slate-900">Reflections</p>
           <div className="mt-4 space-y-3">
-            {recentReflections.map((reflection) => {
-              const isExpanded = expandedReflectionIds.includes(reflection.id);
-              const isEditing = editingReflectionId === reflection.id;
-              const content = reflection.content ?? {};
-              const summary =
-                content.focus || content.intent || content.note || "Captured";
+          {recentReflections.map((reflection) => {
+            const isExpanded = expandedReflectionIds.includes(reflection.id);
+            const isEditing = editingReflectionId === reflection.id;
+            const content = reflection.content ?? {};
+            const summary = (() => {
+              if (reflection.type === "onboarding") {
+                const onboardingContent = content as Record<string, string>;
+                const onboardingSummary =
+                  onboardingContent.downloadReason ||
+                  onboardingContent.currentFeeling ||
+                  onboardingContent.note ||
+                  onboardingContent.displayName;
+                return onboardingSummary || "Onboarding responses";
+              }
               return (
-                <div
-                  key={reflection.id}
-                  className="rounded-2xl border border-slate-100 p-4"
-                >
+                (content as Record<string, string>).focus ||
+                (content as Record<string, string>).intent ||
+                (content as Record<string, string>).note ||
+                (content as Record<string, string>).message ||
+                "Captured"
+              );
+            })();
+            return (
+              <div
+                key={reflection.id}
+                className="rounded-2xl border border-slate-100 p-4"
+              >
                   <div className="flex items-start gap-3">
                     <button
                       type="button"

@@ -11,9 +11,7 @@ type VoteRecord = {
 };
 
 export const FeatureVoteView = () => {
-  const [selectedKey, setSelectedKey] = useState(
-    FEATURE_VOTE_OPTIONS[0]?.key ?? ""
-  );
+  const [selectedKey, setSelectedKey] = useState("");
   const [message, setMessage] = useState("");
   const [existingVote, setExistingVote] = useState<VoteRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,8 +22,7 @@ export const FeatureVoteView = () => {
   const hasVoted = Boolean(existingVote);
   const activeSelection = useMemo(() => {
     if (hasVoted && existingVote) return existingVote.featureKey;
-    if (selectedKey) return selectedKey;
-    return FEATURE_VOTE_OPTIONS[0]?.key ?? "";
+    return selectedKey;
   }, [hasVoted, existingVote, selectedKey]);
 
   useEffect(() => {

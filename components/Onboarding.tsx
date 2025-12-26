@@ -10,6 +10,10 @@ const questions = [
     key: "displayName",
     label: "What should we call you? (Display name)",
   },
+  {
+    key: "downloadReason",
+    label: "What brought you to download the app?",
+  },
 ] as const;
 
 type GoalEntry = {
@@ -102,6 +106,18 @@ export const OnboardingFlow = () => {
     const endOfYear = new Date(new Date().getFullYear(), 11, 31)
       .toISOString()
       .slice(0, 10);
+    const reflectionAnswers = {
+      displayName: answers.displayName?.trim() ?? "",
+      downloadReason: answers.downloadReason?.trim() ?? "",
+      currentFeeling: answers.currentFeeling?.trim() ?? "",
+    };
+    const onboardingNote = [
+      reflectionAnswers.downloadReason
+        ? `Why you downloaded: ${reflectionAnswers.downloadReason}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     updateState((prev) => ({
       ...prev,
@@ -109,7 +125,9 @@ export const OnboardingFlow = () => {
         ...prev.profile,
         onboardingCompletedAt: now,
         displayName:
-          answers.displayName?.trim() || prev.profile.displayName || "Demo",
+          reflectionAnswers.displayName ||
+          prev.profile.displayName ||
+          "Demo",
       },
       lifeAreaScores: [
         ...prev.lifeAreaScores,
@@ -127,7 +145,8 @@ export const OnboardingFlow = () => {
           id: generateId(),
           type: "onboarding",
           content: {
-            ...answers,
+            ...reflectionAnswers,
+            note: onboardingNote || undefined,
             ratedOn: today,
           },
           createdAt: now,
