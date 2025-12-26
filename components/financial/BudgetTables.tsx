@@ -79,9 +79,9 @@ const BudgetTable = <T extends FinancialItem>({
             key={item.id}
             className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3"
           >
-            <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap">
               <input
-                className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
+                className="min-w-[200px] flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
                 placeholder="Description"
                 value={item.description}
                 readOnly={readOnly}
@@ -96,7 +96,7 @@ const BudgetTable = <T extends FinancialItem>({
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 md:w-40"
+                className="w-[120px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 sm:w-[140px] md:w-40"
                 placeholder="Amount"
                 value={
                   Number.isFinite(item.amount) && item.amount !== 0
@@ -113,7 +113,7 @@ const BudgetTable = <T extends FinancialItem>({
               />
               <button
                 type="button"
-                className="rounded-full p-2 text-rose-500 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex-shrink-0 rounded-full p-2 text-rose-500 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={() => handleDelete(item.id)}
                 aria-label={`Remove ${title} entry`}
                 disabled={readOnly}

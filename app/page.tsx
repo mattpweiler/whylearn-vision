@@ -89,7 +89,7 @@ export default function LandingPage() {
         <div className="mt-10 w-full max-w-3xl text-left">
           <div className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-sm backdrop-blur">
             <div className="flex items-start gap-4">
-              <div className="relative h-12 w-12 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm">
+              <div className="relative h-12 w-20 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm">
                 <Image
                   src="/whylearnscreenshot.png"
                   alt="WhyLearn Vision workspace"

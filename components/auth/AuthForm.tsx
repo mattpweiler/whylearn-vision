@@ -101,7 +101,7 @@ export const AuthForm = ({ mode }: { mode: AuthMode }) => {
         }
       );
       if (resetError) throw resetError;
-      setResetStatus("Password reset link sent. Check your email.");
+      setResetStatus("Password reset link sent. Check your email AND Spam Folder.");
     } catch (err) {
       console.error("Password reset request failed", err);
       setError(
