@@ -105,7 +105,11 @@ export default function TermsOfServicePage() {
 
       <section className="space-y-3">
         <h2 className="text-xl font-semibold text-slate-900">13. Changes to the Service or Terms</h2>
-        <p>We may update the app or these Terms. When we do, we will update the &quot;Last updated&quot; date. Continued use means you accept the updated Terms.</p>
+        <p>
+          We may update the app or these Terms. When we do, we will update the &quot;Last updated&quot; date.
+          We reserve the right to modify, pause, or cease operating the service at any time, and there are no availability or uptime guarantees.
+          Continued use means you accept the updated Terms.
+        </p>
       </section>
 
       <section className="space-y-3">
