@@ -201,7 +201,7 @@ export const OnboardingFlow = () => {
             plan for today, this week, this month, and your year. Organize your day to day and finances in one place.
           </p>
           <p className="text-xs text-slate-500">
-            By continuing you agree to our
+            By continuing you agree to our{" "}
             <a
               href="/privacy"
               className="font-semibold text-slate-900 underline"
@@ -209,6 +209,15 @@ export const OnboardingFlow = () => {
               rel="noreferrer"
             >
               Privacy Policy
+            </a>{" "}
+            and{" "}
+            <a
+              href="/terms"
+              className="font-semibold text-slate-900 underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Terms of Service
             </a>
             .
           </p>

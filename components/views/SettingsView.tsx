@@ -215,6 +215,21 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
                 </a>
                 .
               </p>
+            </div>
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-xs">
+              <p className="font-semibold text-slate-900">Terms of Service</p>
+              <p className="mt-1 text-slate-600">
+                Understand the rules for using WhyLearn Vision. Read the full Terms&nbsp;
+                <a
+                  className="font-semibold text-slate-900 underline"
+                  href="/terms"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  here
+                </a>
+                .
+              </p>
               <button
                 className="mt-3 w-full rounded-full border border-red-100 px-3 py-2 text-sm font-semibold text-red-600 transition hover:border-red-300 disabled:opacity-60"
                 onClick={() => {
