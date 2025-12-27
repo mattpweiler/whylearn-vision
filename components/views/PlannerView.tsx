@@ -890,7 +890,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                 return (
                   <button
                     key={dateKey}
-                    className={`flex flex-col rounded-2xl border p-3 text-left transition ${
+                    className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border p-3 text-left transition ${
                       isSelected
                         ? "border-slate-900 bg-slate-900/5"
                         : "border-slate-100 hover:border-slate-200"
@@ -913,14 +913,14 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                           </span>
                         )}
                     </div>
-                    <div className="mt-2 max-h-28 space-y-1 overflow-y-auto text-xs text-slate-600">
+                    <div className="mt-2 max-h-28 min-w-0 space-y-1 overflow-y-auto overflow-x-hidden text-xs text-slate-600">
                       {dayTasks.length === 0 ? (
                         <p className="text-[10px] text-slate-400">No tasks</p>
                       ) : (
                         dayTasks.map((task) => (
                           <p
                             key={task.id}
-                            className={`truncate ${
+                            className={`w-full truncate ${
                               isTaskCompleted(task)
                                 ? "text-emerald-600 line-through"
                                 : ""
@@ -952,7 +952,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                     return (
                       <button
                         key={day.key}
-                        className={`flex flex-col rounded-2xl border p-3 text-left text-sm transition ${
+                        className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border p-3 text-left text-sm transition ${
                           isSelected
                             ? "border-slate-900 bg-slate-900/5"
                             : "border-slate-100 hover:border-slate-200"
@@ -975,14 +975,14 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                               </span>
                             )}
                         </div>
-                        <div className="mt-2 max-h-24 space-y-1 overflow-y-auto text-[11px] text-slate-600">
+                        <div className="mt-2 max-h-24 min-w-0 space-y-1 overflow-y-auto overflow-x-hidden text-[11px] text-slate-600">
                           {dayTasks.length === 0 ? (
                             <p className="text-[10px] text-slate-400">No tasks</p>
                           ) : (
                             dayTasks.map((task) => (
                               <p
                                 key={task.id}
-                                className={`truncate ${
+                                className={`w-full truncate ${
                                   isTaskCompleted(task)
                                     ? "text-emerald-600 line-through"
                                     : ""

@@ -37,7 +37,7 @@ export type StatementLineItemType = "income" | "expense";
 export interface StatementLineItem {
   id: string;
   description: string;
-  amount: number;
+  amount: number | null;
   type: StatementLineItemType;
 }
 

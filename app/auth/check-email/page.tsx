@@ -15,6 +15,9 @@ export default function CheckEmailPage() {
           email to unlock your Vision workspace. The email may take a few minutes to send. 
           Check Your Spam Folder if you don't see it shortly.
         </p>
+        <p className="text-xs text-slate-500">
+            If you never get an email, email <a className="font-semibold text-slate-900" href="mailto:whylearnwednesdays@gmail.com">whylearnwednesdays@gmail.com</a> and we'll help. Try Refreshing the main app page as well.
+        </p>
         <div className="mt-8 space-y-3">
           <Link
             href="/auth/sign-in"

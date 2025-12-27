@@ -513,7 +513,10 @@ interface MonthlyStatementsSectionProps {
 type ChartRange = "3m" | "6m" | "1y" | "all";
 
 const sumItems = (items: StatementLineItem[] = []) =>
-  items.reduce((total, item) => total + (item.amount || 0), 0);
+  items.reduce((total, item) => {
+    const amount = Number.isFinite(item.amount ?? NaN) ? Number(item.amount) : 0;
+    return total + amount;
+  }, 0);
 
 const incomeValue = (statement: MonthlyStatement) =>
   statement.incomeItems?.length
@@ -717,7 +720,7 @@ const MonthlyStatementsSection = ({
       {
         id: generateItemId(),
         description: type === "income" ? "New income" : "New expense",
-        amount: 0,
+        amount: null,
         type,
       },
     ]);
@@ -1098,14 +1101,21 @@ const MonthlyStatementsSection = ({
                                   type="number"
                                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
                                   value={Number.isFinite(item.amount) ? item.amount : ""}
-                                  onChange={(event) =>
+                                  onChange={(event) => {
+                                    const raw = event.target.value;
+                                    const parsed =
+                                      raw === "" ? null : Number(raw);
+                                    const sanitized =
+                                      parsed === null || Number.isNaN(parsed)
+                                        ? null
+                                        : parsed;
                                     updateStatementItem(
                                       statement.id,
                                       item.id,
                                       "income",
-                                      { amount: Number(event.target.value) || 0 }
-                                    )
-                                  }
+                                      { amount: sanitized }
+                                    );
+                                  }}
                                   placeholder="$"
                                 />
                                 <button
@@ -1175,14 +1185,21 @@ const MonthlyStatementsSection = ({
                                   type="number"
                                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
                                   value={Number.isFinite(item.amount) ? item.amount : ""}
-                                  onChange={(event) =>
+                                  onChange={(event) => {
+                                    const raw = event.target.value;
+                                    const parsed =
+                                      raw === "" ? null : Number(raw);
+                                    const sanitized =
+                                      parsed === null || Number.isNaN(parsed)
+                                        ? null
+                                        : parsed;
                                     updateStatementItem(
                                       statement.id,
                                       item.id,
                                       "expense",
-                                      { amount: Number(event.target.value) || 0 }
-                                    )
-                                  }
+                                      { amount: sanitized }
+                                    );
+                                  }}
                                   placeholder="$"
                                 />
                                 <button

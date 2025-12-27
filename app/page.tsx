@@ -62,7 +62,7 @@ export default function LandingPage() {
             href="/auth/sign-up"
             className="rounded-full bg-slate-900 px-4 py-2 text-white"
           >
-            Start free
+            Sign Up
           </Link>
         </div>
       </header>

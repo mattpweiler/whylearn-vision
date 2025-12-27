@@ -187,11 +187,11 @@ export const OnboardingFlow = () => {
       return (
         <div className="space-y-6 text-center max-w-xl">
           <p className="text-3xl font-semibold text-slate-900">
-            Welcome to WhyLearn Mentor
+            Welcome to WhyLearn Vision
           </p>
           <p className="text-lg text-slate-600">
             This app helps you go from “I don’t know what I’m doing” to a clear
-            plan for today, this week, this month, and your year guided by your personal AI mentor.
+            plan for today, this week, this month, and your year. Organize your day to day and finances in one place.
           </p>
           <p className="text-xs text-slate-500">
             By continuing you agree to our

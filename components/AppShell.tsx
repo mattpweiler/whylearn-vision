@@ -33,7 +33,7 @@ const meta: Record<ViewKey, { title: string; subtitle: string }> = {
   },
   direction: {
     title: "Direction & Purpose",
-    subtitle: "Life areas, reflections, and AI mentor.",
+    subtitle: "Life areas and reflections to track how you're doing.",
   },
   next_steps: {
     title: "What Are My Next Steps?",
