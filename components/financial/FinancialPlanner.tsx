@@ -73,6 +73,7 @@ export const FinancialPlanner = ({
   enableModeToggle = true,
   readOnly = false,
 }: FinancialPlannerProps) => {
+  type SectionKey = "income" | "expenses" | "assets" | "liabilities";
   const { session } = useSupabase();
   const isAuthenticated = Boolean(session);
   const remoteData = useFinancialRecords(isAuthenticated && !readOnly);
@@ -324,6 +325,48 @@ export const FinancialPlanner = ({
     totalLiabilities,
   });
   const freedomNarrative = getFreedomNarrative(freedomScore.score);
+  const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
+    income: false,
+    expenses: false,
+    assets: false,
+    liabilities: false,
+  });
+
+  const renderCollapsibleSection = (
+    key: SectionKey,
+    title: string,
+    total: number,
+    content: ReactNode
+  ) => {
+    const isOpen = openSections[key];
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between px-4 py-3 text-left"
+          onClick={() =>
+            setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }))
+          }
+        >
+          <div>
+            <p className="text-sm font-semibold text-slate-900">{title}</p>
+            <p className="text-xs text-slate-500">
+              {isOpen ? "Hide details" : "Show details"}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-sm font-semibold text-slate-900">
+              {formatCurrency(total)}
+            </div>
+            <span className="text-lg font-semibold text-slate-400">
+              {isOpen ? "-" : "+"}
+            </span>
+          </div>
+        </button>
+        {isOpen ? <div className="border-t border-slate-100 p-4">{content}</div> : null}
+      </div>
+    );
+  };
 
   if (isAuthenticated && remoteData.isLoading) {
     return (
@@ -381,36 +424,53 @@ export const FinancialPlanner = ({
             <FinancialSummaryCards
               totalIncome={totalIncome}
               totalExpenses={totalExpenses}
+              netWorth={netWorth}
+              freedomScore={freedomScore.score}
             />
           </PageSection>
 
           <PageSection>
-            <div className="grid gap-6 lg:grid-cols-2">
-              <IncomeTable
-                items={incomes}
-                onChange={handleIncomeChange}
-                readOnly={readOnly}
-              />
-              <ExpenseTable
-                items={expenses}
-                onChange={handleExpenseChange}
-                readOnly={readOnly}
-              />
-            </div>
-          </PageSection>
-
-          <PageSection>
-            <div className="grid gap-6 lg:grid-cols-2">
-              <AssetTable
-                items={assets}
-                onChange={handleAssetChange}
-                readOnly={readOnly}
-              />
-              <LiabilityTable
-                items={liabilities}
-                onChange={handleLiabilityChange}
-                readOnly={readOnly}
-              />
+            <div className="grid gap-4 lg:grid-cols-2">
+              {renderCollapsibleSection(
+                "income",
+                "Income",
+                totalIncome,
+                <IncomeTable
+                  items={incomes}
+                  onChange={handleIncomeChange}
+                  readOnly={readOnly}
+                />
+              )}
+              {renderCollapsibleSection(
+                "expenses",
+                "Expenses",
+                totalExpenses,
+                <ExpenseTable
+                  items={expenses}
+                  onChange={handleExpenseChange}
+                  readOnly={readOnly}
+                />
+              )}
+              {renderCollapsibleSection(
+                "assets",
+                "Assets",
+                totalAssets,
+                <AssetTable
+                  items={assets}
+                  onChange={handleAssetChange}
+                  readOnly={readOnly}
+                />
+              )}
+              {renderCollapsibleSection(
+                "liabilities",
+                "Liabilities",
+                totalLiabilities,
+                <LiabilityTable
+                  items={liabilities}
+                  onChange={handleLiabilityChange}
+                  readOnly={readOnly}
+                />
+              )}
             </div>
           </PageSection>
 
