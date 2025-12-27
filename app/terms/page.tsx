@@ -108,7 +108,7 @@ export default function TermsOfServicePage() {
         <p>
           We may update the app or these Terms. When we do, we will update the &quot;Last updated&quot; date.
           We reserve the right to modify, pause, or cease operating the service at any time, and there are no availability or uptime guarantees.
-          Continued use means you accept the updated Terms.
+          Continued use means you accept the updated Terms. In the event that we cease operating the service, we will attempt to provide adequate notice to our users.
         </p>
       </section>
 
