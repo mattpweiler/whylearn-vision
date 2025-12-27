@@ -7,6 +7,8 @@ import {
   generateId,
   isTaskCompleted,
 } from "@/lib/utils";
+import { GoalColorPicker } from "@/components/goals/GoalColorPicker";
+import { DEFAULT_GOAL_COLOR, GoalColor } from "@/lib/goalColors";
 
 interface ViewProps {
   state: AppState;
@@ -18,6 +20,7 @@ const defaultGoal = () => ({
   description: "",
   priority: "medium" as PriorityLevel,
   targetDate: "",
+  color: DEFAULT_GOAL_COLOR as GoalColor,
 });
 
 export const YearGoalsView = ({ state, updateState }: ViewProps) => {
@@ -36,6 +39,7 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
     description: "",
     priority: "medium" as PriorityLevel,
     targetDate: "",
+    color: DEFAULT_GOAL_COLOR as GoalColor,
   });
   const [showNewGoalForm, setShowNewGoalForm] = useState(false);
   const [showGoalTips, setShowGoalTips] = useState(false);
@@ -87,6 +91,7 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
       targetDate: form.targetDate || endOfYear,
       status: "active",
       createdAt: now,
+      color: form.color ?? DEFAULT_GOAL_COLOR,
     };
     updateState((prev) => ({ ...prev, goals: [goal, ...prev.goals] }));
     setForm(defaultGoal());
@@ -110,6 +115,7 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
       description: goal.description ?? "",
       priority: goal.priority,
       targetDate: goal.targetDate ?? "",
+      color: goal.color ?? DEFAULT_GOAL_COLOR,
     });
   };
 
@@ -125,6 +131,7 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
               description: goalEdit.description || undefined,
               priority: goalEdit.priority,
               targetDate: goalEdit.targetDate || undefined,
+              color: goalEdit.color ?? DEFAULT_GOAL_COLOR,
             }
           : goal
       ),
@@ -221,7 +228,14 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                 className="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition hover:border-slate-200 hover:bg-white hover:shadow-sm cursor-pointer"
               >
               <summary className="flex cursor-pointer items-center justify-between text-sm font-semibold text-slate-900">
-                <span>{goal.title}</span>
+                <span className="flex items-center gap-2">
+                  <span
+                    className="h-3 w-3 rounded-full border border-slate-200"
+                    style={{ backgroundColor: goal.color, color: "#0f172a" }}
+                    aria-hidden
+                  />
+                  <span>{goal.title}</span>
+                </span>
                 <span
                   className={`text-xs font-semibold border rounded-full px-3 py-1 ${priorityBadgeStyles[goal.priority]}`}
                 >
@@ -270,6 +284,16 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                         }
                       />
                     </div>
+                    <GoalColorPicker
+                      value={goalEdit.color}
+                      onChange={(color) =>
+                        setGoalEdit((prev) => ({
+                          ...prev,
+                          color,
+                        }))
+                      }
+                      className="text-xs"
+                    />
                     <div className="flex gap-2 text-xs">
                       <button
                         className="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white"
@@ -402,6 +426,12 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                   }
                 />
               </label>
+              <div className="md:col-span-2">
+                <GoalColorPicker
+                  value={form.color}
+                  onChange={(color) => setForm((prev) => ({ ...prev, color }))}
+                />
+              </div>
               <label className="md:col-span-2 text-sm font-medium text-slate-600">
                 Description
                 <textarea

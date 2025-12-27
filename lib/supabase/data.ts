@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { AppState, AiMessageRole, ViewKey } from "@/lib/types";
 import { DEFAULT_LIFE_AREAS } from "@/lib/lifeAreas";
 import { currentTimezone, defaultSettings } from "@/lib/utils";
+import { normalizeGoalColor } from "@/lib/goalColors";
 
 type NullableRecord = Record<string, unknown> | null;
 
@@ -111,7 +112,7 @@ export const fetchSupabaseAppState = async (
     supabase
       .from("goals")
       .select(
-        "id, title, description, life_area_id, status, priority, target_date, is_starred, created_at"
+        "id, title, description, life_area_id, status, priority, target_date, is_starred, color_hex, created_at"
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
@@ -257,6 +258,7 @@ export const fetchSupabaseAppState = async (
       targetDate: goal.target_date ?? undefined,
       isStarred: goal.is_starred ?? false,
       createdAt: goal.created_at,
+      color: normalizeGoalColor(goal.color_hex),
     })),
     habits: (habitsResult.data ?? []).map((habit) => ({
       id: habit.id,

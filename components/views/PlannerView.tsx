@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type DragEvent, type MouseEvent } from "react";
 import { AppState, Task } from "@/lib/types";
+import { DEFAULT_GOAL_COLOR } from "@/lib/goalColors";
 import {
   endOfWeek,
   formatDateKey,
@@ -62,10 +63,12 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     title: string;
     scheduledDate: string;
     priority: Task["priority"];
+    goalId: string;
   }>({
     title: "",
     scheduledDate: "",
     priority: "medium",
+    goalId: "",
   });
   const [openTaskMenuId, setOpenTaskMenuId] = useState<string | null>(null);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
@@ -132,11 +135,14 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     }
   }, [rangeEndKey, rangeStartKey, selectedDate]);
 
-  const tasksByDate = useMemo(
-    () =>
-      tasksByDateWithinRange(state.tasks, rangeStartKey, rangeEndKey),
-    [state.tasks, rangeEndKey, rangeStartKey]
-  );
+  const tasksByDate = useMemo(() => {
+    const grouped = tasksByDateWithinRange(state.tasks, rangeStartKey, rangeEndKey);
+    const reordered: typeof grouped = {};
+    Object.keys(grouped).forEach((key) => {
+      reordered[key] = reorderByCompletion(sortTasks(grouped[key]));
+    });
+    return reordered;
+  }, [state.tasks, rangeEndKey, rangeStartKey]);
 
   const selectedDayTasks = tasksByDate[selectedDate] ?? [];
   const selectedDayLabel = labelForDateKey(selectedDate);
@@ -146,6 +152,13 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     const map: Record<string, string> = {};
     state.goals.forEach((goal) => {
       map[goal.id] = goal.title;
+    });
+    return map;
+  }, [state.goals]);
+  const goalColorLookup = useMemo(() => {
+    const map: Record<string, string> = {};
+    state.goals.forEach((goal) => {
+      map[goal.id] = goal.color ?? DEFAULT_GOAL_COLOR;
     });
     return map;
   }, [state.goals]);
@@ -160,11 +173,11 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     [extendedRangeEndKey, rangeStartKey, state.tasks]
   );
 
-  const reorderByCompletion = (tasks: Task[]) => {
+  function reorderByCompletion(tasks: Task[]) {
     const pending = tasks.filter((task) => !isTaskCompleted(task));
     const done = tasks.filter((task) => isTaskCompleted(task));
     return [...pending, ...done];
-  };
+  }
 
   const groupedTasks = useMemo(() => {
     const scheduled: Record<string, Task[]> = {};
@@ -572,6 +585,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
       title: task.title,
       scheduledDate: task.scheduledDate ?? task.scheduledFor ?? "",
       priority: task.priority,
+      goalId: task.goalId ?? "",
     });
   };
 
@@ -589,6 +603,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
               priority: taskEditDraft.priority,
               scheduledDate: taskEditDraft.scheduledDate || null,
               scheduledFor: taskEditDraft.scheduledDate || undefined,
+              goalId: taskEditDraft.goalId || undefined,
             }
           : task
       ),
@@ -648,6 +663,23 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                     <option value="low">Low priority</option>
                     <option value="medium">Medium priority</option>
                     <option value="high">High priority</option>
+                  </select>
+                  <select
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                    value={taskEditDraft.goalId}
+                    onChange={(e) =>
+                      setTaskEditDraft((prev) => ({
+                        ...prev,
+                        goalId: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">No goal</option>
+                    {state.goals.map((goal) => (
+                      <option key={goal.id} value={goal.id}>
+                        {goal.title}
+                      </option>
+                    ))}
                   </select>
                 </>
               ) : (
@@ -917,18 +949,28 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                       {dayTasks.length === 0 ? (
                         <p className="text-[10px] text-slate-400">No tasks</p>
                       ) : (
-                        dayTasks.map((task) => (
-                          <p
-                            key={task.id}
-                            className={`w-full truncate ${
-                              isTaskCompleted(task)
-                                ? "text-emerald-600 line-through"
-                                : ""
-                            }`}
-                          >
-                            {task.title}
-                          </p>
-                        ))
+                        dayTasks.map((task) => {
+                          const goalColor = task.goalId
+                            ? goalColorLookup[task.goalId] ?? DEFAULT_GOAL_COLOR
+                            : DEFAULT_GOAL_COLOR;
+                          const isDone = isTaskCompleted(task);
+                          return (
+                            <p key={task.id} className="w-full">
+                              <span
+                                className={`inline-flex w-full items-center gap-2 truncate rounded-xl border px-2 py-1 ${
+                                  isDone ? "line-through" : ""
+                                }`}
+                                style={{
+                                  backgroundColor: goalColor,
+                                  color: "#0f172a",
+                                  borderColor: "#cbd5e1",
+                                }}
+                              >
+                                <span className="truncate">{task.title}</span>
+                              </span>
+                            </p>
+                          );
+                        })
                       )}
                     </div>
                   </button>
@@ -979,18 +1021,28 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                           {dayTasks.length === 0 ? (
                             <p className="text-[10px] text-slate-400">No tasks</p>
                           ) : (
-                            dayTasks.map((task) => (
-                              <p
-                                key={task.id}
-                                className={`w-full truncate ${
-                                  isTaskCompleted(task)
-                                    ? "text-emerald-600 line-through"
-                                    : ""
-                                }`}
-                              >
-                                {task.title}
-                              </p>
-                            ))
+                            dayTasks.map((task) => {
+                              const goalColor = task.goalId
+                                ? goalColorLookup[task.goalId] ?? DEFAULT_GOAL_COLOR
+                                : DEFAULT_GOAL_COLOR;
+                              const isDone = isTaskCompleted(task);
+                              return (
+                                <p key={task.id} className="w-full">
+                                  <span
+                                    className={`inline-flex w-full items-center gap-2 truncate rounded-xl border px-2 py-1 ${
+                                      isDone ? "line-through" : ""
+                                    }`}
+                                    style={{
+                                      backgroundColor: goalColor,
+                                      color: "#0f172a",
+                                      borderColor: "#cbd5e1",
+                                    }}
+                                  >
+                                    <span className="truncate">{task.title}</span>
+                                  </span>
+                                </p>
+                              );
+                            })
                           )}
                         </div>
                       </button>

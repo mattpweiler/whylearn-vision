@@ -1,3 +1,5 @@
+import { GoalColor } from "@/lib/goalColors";
+
 export type LifeAreaKey =
   | "career"
   | "money"
@@ -43,6 +45,7 @@ export interface Goal {
   targetDate?: string;
   isStarred: boolean;
   createdAt: string;
+  color: GoalColor;
 }
 
 export interface Habit {

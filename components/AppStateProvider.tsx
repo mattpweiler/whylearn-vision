@@ -17,6 +17,7 @@ import {
   generateId,
   monthLabel,
 } from "@/lib/utils";
+import { DEFAULT_GOAL_COLOR } from "@/lib/goalColors";
 import { fetchSupabaseAppState } from "@/lib/supabase/data";
 import { persistWorkspaceChanges } from "@/lib/supabase/persistence";
 import { DEFAULT_LIFE_AREAS } from "@/lib/lifeAreas";
@@ -43,6 +44,7 @@ const sampleGoals = () => [
       .slice(0, 10),
     isStarred: true,
     createdAt: new Date().toISOString(),
+    color: DEFAULT_GOAL_COLOR,
   },
   {
     id: generateId(),
@@ -56,6 +58,7 @@ const sampleGoals = () => [
       .slice(0, 10),
     isStarred: false,
     createdAt: new Date().toISOString(),
+    color: DEFAULT_GOAL_COLOR,
   },
 ];
 
@@ -114,6 +117,12 @@ const sampleTasks = () => {
     },
   ];
 };
+
+const withGoalColors = (goals: AppState["goals"]) =>
+  goals.map((goal) => ({
+    ...goal,
+    color: goal.color ?? DEFAULT_GOAL_COLOR,
+  }));
 
 const createBaseState = (): AppState => ({
   profile: {
@@ -180,11 +189,15 @@ export const AppStateProvider = ({
       const stored = window.localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed: AppState = JSON.parse(stored);
-        setState(parsed);
+        setState({
+          ...parsed,
+          goals: withGoalColors(parsed.goals ?? []),
+        });
       } else {
         const base = createBaseState();
-        setState(base);
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(base));
+        const hydratedBase = { ...base, goals: withGoalColors(base.goals) };
+        setState(hydratedBase);
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(hydratedBase));
       }
     } catch (err) {
       console.error("Failed to load saved state", err);
@@ -204,7 +217,10 @@ export const AppStateProvider = ({
     setError(null);
     try {
       const result = await fetchSupabaseAppState(supabaseClient, userId);
-      setState(result.state);
+      setState({
+        ...result.state,
+        goals: withGoalColors(result.state.goals ?? []),
+      });
       profileBootstrapRef.current = !result.profileExists;
       settingsBootstrapRef.current = !result.settingsExists;
     } catch (err) {

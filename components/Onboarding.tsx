@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 import { useAppState } from "@/components/AppStateProvider";
 import { PriorityLevel } from "@/lib/types";
+import { GoalColor } from "@/lib/goalColors";
+import { GoalColorPicker } from "@/components/goals/GoalColorPicker";
+import { DEFAULT_GOAL_COLOR } from "@/lib/goalColors";
 import { generateId, todayKey } from "@/lib/utils";
 
 const questions = [
@@ -24,6 +27,7 @@ type GoalEntry = {
   priority: PriorityLevel;
   targetDate: string;
   isStarred: boolean;
+  color: GoalColor;
 };
 
 type HabitEntry = {
@@ -40,6 +44,7 @@ const emptyGoalDraft = (): Omit<GoalEntry, "id"> => ({
   priority: "medium",
   targetDate: "",
   isStarred: false,
+  color: DEFAULT_GOAL_COLOR,
 });
 
 const emptyHabitDraft = (): Omit<HabitEntry, "id"> => ({
@@ -165,6 +170,7 @@ export const OnboardingFlow = () => {
           status: "active" as const,
           isStarred: goal.isStarred,
           createdAt: now,
+          color: goal.color ?? DEFAULT_GOAL_COLOR,
         })),
       ],
       habits: [
@@ -367,13 +373,20 @@ export const OnboardingFlow = () => {
                   key={goal.id}
                   className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4"
                 >
-                  <div>
-                    <p className="text-base font-semibold text-slate-900">
-                      {goal.title}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {goal.priority.toUpperCase()} · {areaName ?? "Any area"}
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-3 w-3 rounded-full border border-slate-200"
+                      style={{ backgroundColor: goal.color, color: "#0f172a" }}
+                      aria-hidden
+                    />
+                    <div>
+                      <p className="text-base font-semibold text-slate-900">
+                        {goal.title}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {goal.priority.toUpperCase()} · {areaName ?? "Any area"}
+                      </p>
+                    </div>
                   </div>
                   <button
                     className="text-sm text-slate-500 hover:text-slate-900"
@@ -445,6 +458,10 @@ export const OnboardingFlow = () => {
                 }
               />
             </div>
+            <GoalColorPicker
+              value={goalDraft.color}
+              onChange={(color) => setGoalDraft((prev) => ({ ...prev, color }))}
+            />
             <button
               className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white"
               onClick={addGoalEntry}

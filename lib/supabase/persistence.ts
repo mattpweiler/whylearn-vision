@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AiMessage, AppState } from "@/lib/types";
+import { normalizeGoalColor } from "@/lib/goalColors";
 
 type TaskRow = ReturnType<typeof serializeTask>;
 type GoalRow = ReturnType<typeof serializeGoal>;
@@ -45,6 +46,7 @@ const serializeGoal = (goal: AppState["goals"][number], userId: string) => ({
   priority: goal.priority,
   target_date: asDateOrNull(goal.targetDate),
   is_starred: goal.isStarred ?? false,
+  color_hex: normalizeGoalColor(goal.color),
   created_at: goal.createdAt,
 });
 

@@ -12,7 +12,7 @@ export const AppExperience = () => {
       <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-600">
         <div className="rounded-3xl border border-red-100 bg-white px-6 py-5 text-center shadow-sm">
           <p className="text-base font-semibold text-red-600">
-            Something went wrong
+            Something went wrong. Please refresh or email whylearnwednesdays@gmail.com with your issue.
           </p>
           <p className="mt-2 text-sm text-slate-500">{error}</p>
         </div>
