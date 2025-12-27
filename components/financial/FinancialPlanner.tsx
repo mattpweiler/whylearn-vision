@@ -1100,7 +1100,7 @@ const MonthlyStatementsSection = ({
                                 <input
                                   type="number"
                                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                                  value={Number.isFinite(item.amount) ? item.amount : ""}
+                                  value={Number.isFinite(item.amount) ? item.amount : "" as any}
                                   onChange={(event) => {
                                     const raw = event.target.value;
                                     const parsed =
@@ -1184,7 +1184,7 @@ const MonthlyStatementsSection = ({
                                 <input
                                   type="number"
                                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
-                                  value={Number.isFinite(item.amount) ? item.amount : ""}
+                                  value={Number.isFinite(item.amount) ? item.amount : "" as any}
                                   onChange={(event) => {
                                     const raw = event.target.value;
                                     const parsed =

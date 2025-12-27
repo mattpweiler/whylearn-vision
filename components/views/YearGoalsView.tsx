@@ -153,44 +153,46 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
   return (
     <div className="space-y-6">
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <p className="text-lg font-semibold text-slate-900">Big yearly goals</p>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-semibold text-slate-900">Big yearly goals</p>
+              <button
+                type="button"
+                className="flex items-center justify-center rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
+                onClick={() => setShowGoalTips((prev) => !prev)}
+                aria-label="How do I write a good goal?"
+              >
+                How do I write a good goal?
+              </button>
+            </div>
             <button
-              type="button"
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-xs font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
-              onClick={() => setShowGoalTips((prev) => !prev)}
-              aria-label="Goal inspiration tips"
-            >
-              i
-            </button>
-          </div>
-          <button
-            className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500"
-            onClick={() => setShowNewGoalForm(true)}
+              className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500"
+              onClick={() => setShowNewGoalForm(true)}
           >
             + New goal
           </button>
         </div>
         {showGoalTips && (
           <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600">
-            <p className="font-semibold text-slate-800">Need inspiration?</p>
+            <p className="font-semibold text-slate-800">Write goals you can count.</p>
             <p className="mt-1">
-              Think about goals that move different areas of your life forward:{" "}
-              <span className="font-medium text-slate-900">
-                Financial, Health, Relationships, Career, Personal Growth, and Adventure.
-              </span>
+              Swap vague outcomes for actions you control: instead of “successful YouTube channel,”
+              try “upload two videos every week for the next three months.” Make the action and
+              cadence obvious so you can track progress.
+            </p>
+            <p className="mt-2">
+              Think across life areas for ideas—make them measurable:
             </p>
             <ul className="mt-3 list-disc space-y-1 pl-5">
-              <li>Financial: e.g., “Max out Roth IRA” or “Pay off $10k debt.”</li>
-              <li>Health: “Run a half marathon” or “Dial nutrition to 80% whole foods.”</li>
-              <li>Social: “Host a monthly meetup” or “Plan a family trip.”</li>
-              <li>Personal: “Read 24 books” or “Learn conversational Spanish.”</li>
+              <li>Financial: “Invest $500 monthly” or “Pay off $10k debt by December.”</li>
+              <li>Health: “Run 3x weekly and finish a half marathon in October.”</li>
+              <li>Social: “Host a monthly meetup” or “Plan one family trip each quarter.”</li>
+              <li>Personal: “Read 24 books this year” or “Study Spanish 20 minutes daily.”</li>
             </ul>
-          <p className="mt-2 text-xs text-slate-500">
-            Pick 3–5 quests that feel energizing and measurable for this year.
-          </p>
-        </div>
+            <p className="mt-2 text-xs text-slate-500">
+              Pick 3–5 quests that feel energizing and measurable for this year.
+            </p>
+          </div>
         )}
         <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
           <div className="flex items-center justify-between text-sm text-slate-600">

@@ -67,6 +67,7 @@ export const OnboardingFlow = () => {
   const [goalDraft, setGoalDraft] = useState(emptyGoalDraft());
   const [habitEntries, setHabitEntries] = useState<HabitEntry[]>([]);
   const [habitDraft, setHabitDraft] = useState(emptyHabitDraft());
+  const [showGoalTips, setShowGoalTips] = useState(false);
 
   const addGoalEntry = () => {
     if (!goalDraft.title.trim()) return;
@@ -320,13 +321,40 @@ export const OnboardingFlow = () => {
     if (step === 4) {
       return (
         <div className="w-full max-w-3xl space-y-6">
-          <div>
-            <p className="text-2xl font-semibold text-slate-900">
-              Sketch your big yearly goals
-            </p>
-            <p className="text-slate-600">
-              Up to three big goals you care about hitting this year.
-            </p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-2xl font-semibold text-slate-900">
+                  Sketch your big yearly goals
+                </p>
+                <p className="text-slate-600">
+                  Up to three big goals you care about hitting this year.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="flex items-center justify-center rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
+                onClick={() => setShowGoalTips((prev) => !prev)}
+                aria-label="How do I write a good goal?"
+              >
+                How do I write a good goal?
+              </button>
+            </div>
+            {showGoalTips && (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-700">
+                <p className="font-semibold text-slate-900">Make it specific and action-based.</p>
+                <p className="mt-1">
+                  Write goals you can count or schedule. Instead of “successful YouTube,” try
+                  “upload two videos every week for the next three months.” Swap vague outcomes for
+                  measurable actions you control.
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  <li>Health: “Run 3x weekly and finish a half marathon in October.”</li>
+                  <li>Career: “Ship one portfolio project each month.”</li>
+                  <li>Finance: “Invest $500 monthly into index funds.”</li>
+                </ul>
+              </div>
+            )}
           </div>
           <div className="space-y-3">
             {goalEntries.map((goal) => {
