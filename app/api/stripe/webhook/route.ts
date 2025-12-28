@@ -154,9 +154,6 @@ export const POST = async (request: NextRequest) => {
         console.log("[stripe-webhook] checkout.session.completed", {
           id: session.id,
           subscription: session.subscription,
-          customer: session.customer,
-          metadata: session.metadata,
-          clientReferenceId: session.client_reference_id,
         });
         if (!session.subscription || !session.customer) break;
         const subscription = await stripe.subscriptions.retrieve(
@@ -169,10 +166,9 @@ export const POST = async (request: NextRequest) => {
           (subscription.metadata?.user_id as string | undefined) ??
           (session.client_reference_id as string | undefined) ??
           null;
-        console.log("[stripe-webhook] resolved user for checkout.session.completed", {
-          userId,
+        console.log("[stripe-webhook] resolved checkout user", {
+          userId: Boolean(userId) ? "resolved" : "missing",
           subscriptionId: subscription.id,
-          status: subscription.status,
         });
         await syncFromStripeSubscription(subscription, userId);
         break;
@@ -185,8 +181,6 @@ export const POST = async (request: NextRequest) => {
           type: event.type,
           id: subscription.id,
           status: subscription.status,
-          userId: subscription.metadata?.user_id,
-          customer: subscription.customer,
         });
         await syncFromStripeSubscription(subscription);
         break;

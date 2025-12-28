@@ -9,14 +9,12 @@ const resolveStripeSecretKey = () => {
   if (isProd()) {
     return (
       process.env.STRIPE_SECRET_KEY_LIVE ||
-      process.env.STRIPE_SECRET_KEY ||
-      process.env.NEXT_PUBLIC_STRIPE_SECRET_KEY
+      process.env.STRIPE_SECRET_KEY
     );
   }
   return (
     process.env.STRIPE_SECRET_KEY_TEST ||
-    process.env.STRIPE_SECRET_KEY ||
-    process.env.NEXT_PUBLIC_STRIPE_SECRET_KEY
+    process.env.STRIPE_SECRET_KEY
   );
 };
 
@@ -39,14 +37,12 @@ const resolveWebhookSecret = () => {
   if (isProd()) {
     return (
       process.env.STRIPE_WEBHOOK_SECRET_LIVE ||
-      process.env.STRIPE_WEBHOOK_SECRET ||
-      process.env.NEXT_PUBLIC_STRIPE_WEBHOOK_SECRET
+      process.env.STRIPE_WEBHOOK_SECRET
     );
   }
   return (
     process.env.STRIPE_WEBHOOK_SECRET_TEST ||
-    process.env.STRIPE_WEBHOOK_SECRET ||
-    process.env.NEXT_PUBLIC_STRIPE_WEBHOOK_SECRET
+    process.env.STRIPE_WEBHOOK_SECRET
   );
 };
 
