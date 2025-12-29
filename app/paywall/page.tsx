@@ -195,7 +195,7 @@ const PaywallContent = () => {
             <div>
               <p className="text-sm font-semibold text-emerald-800">Ready to jump in?</p>
               <p className="text-sm text-emerald-900/80">
-                Subscribe now to unlock planning, financial freedom, and monthly profit tracking.
+                Subscribe now to unlock planning, financial freedom, and monthly profit tracking. Feel free to cancel anytime.
               </p>
             </div>
             <button
