@@ -226,21 +226,6 @@ const PaywallContent = () => {
                 ))}
               </ul>
             </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">What to expect</p>
-              <div className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-3">
-                {[{ week: "Week 1", copy: "Plan your days, accomplish what you want, and feel in control." },
-                  { week: "Week 4", copy: "Find that groove and start tracking your progress" },
-                  { week: "Week 12", copy: "See trends across goals, habits, and finances with less chaos." }].map((item) => (
-                  <div key={item.week} className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">{item.week}</p>
-                    <p className="mt-2 text-sm text-slate-700">{item.copy}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-slate-700">Your status</p>
               <p className="mt-2 text-lg font-semibold text-slate-900">
