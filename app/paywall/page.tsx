@@ -24,7 +24,7 @@ const featureList = [
   "Goal planning, habit tracking, and reflections",
   "Financial Freedom Calculator and Monthly Profit Tracker",
   "Productivity helpers to help you plan and win each day",
-  "Vote on the Next Features we Build"
+  "Vote on the Next Features we Build",
 ];
 
 const peekImages = [
@@ -49,7 +49,9 @@ const PaywallContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { session, isLoading: isAuthLoading } = useSupabase();
-  const [subscription, setSubscription] = useState<SubscriptionRow | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionRow | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,7 +124,9 @@ const PaywallContent = () => {
     setError(null);
     try {
       const response = await fetch(
-        `/api/stripe/create-checkout?redirectTo=${encodeURIComponent(destination)}`,
+        `/api/stripe/create-checkout?redirectTo=${encodeURIComponent(
+          destination
+        )}`,
         {
           method: "POST",
         }
@@ -179,7 +183,8 @@ const PaywallContent = () => {
               Activate your workspace
             </h1>
             <p className="mt-3 text-base text-slate-600">
-              A focused workspace for daily/monthly planning and financial clarity.
+              A focused workspace for daily/monthly planning and financial
+              clarity.
             </p>
           </div>
           <Link
@@ -193,9 +198,15 @@ const PaywallContent = () => {
         <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-5 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-emerald-800">Ready to jump in?</p>
+              <p className="text-sm font-semibold text-emerald-800">
+                Ready to jump in?
+              </p>
               <p className="text-sm text-emerald-900/80">
-                Subscribe now to unlock planning, financial freedom, and monthly profit tracking. Feel free to cancel anytime.
+                Subscribe now to unlock planning, financial freedom, and monthly
+                profit tracking. Feel free to cancel anytime.
+              </p>
+              <p className="mt-2 text-sm font-semibold text-emerald-700">
+                $5.99/month — cancel anytime.
               </p>
             </div>
             <button
@@ -207,8 +218,8 @@ const PaywallContent = () => {
               {isRedirecting
                 ? "Sending you to Stripe..."
                 : hasActiveSubscription
-                  ? "You are subscribed"
-                  : "Subscribe now"}
+                ? "You are subscribed"
+                : "Subscribe now"}
             </button>
           </div>
         </div>
@@ -216,7 +227,9 @@ const PaywallContent = () => {
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-6">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-6 py-5">
-              <p className="text-sm font-semibold text-slate-700">What you get</p>
+              <p className="text-sm font-semibold text-slate-700">
+                What you get
+              </p>
               <ul className="mt-3 space-y-3 text-sm text-slate-600">
                 {featureList.map((item) => (
                   <li key={item} className="flex items-start gap-2">
@@ -227,9 +240,13 @@ const PaywallContent = () => {
               </ul>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-slate-700">Your status</p>
+              <p className="text-sm font-semibold text-slate-700">
+                Your status
+              </p>
               <p className="mt-2 text-lg font-semibold text-slate-900">
-                {hasActiveSubscription ? "Active subscription" : "Subscription required"}
+                {hasActiveSubscription
+                  ? "Active subscription"
+                  : "Subscription required"}
               </p>
               <p className="mt-2 text-sm text-slate-600">
                 {statusMessage ??
@@ -239,7 +256,10 @@ const PaywallContent = () => {
               </p>
               {subscription?.current_period_end ? (
                 <p className="mt-2 text-xs text-slate-500">
-                  Renews on {new Date(subscription.current_period_end).toLocaleDateString()}
+                  Renews on{" "}
+                  {new Date(
+                    subscription.current_period_end
+                  ).toLocaleDateString()}
                 </p>
               ) : null}
               {error ? (
@@ -256,8 +276,8 @@ const PaywallContent = () => {
                 {isRedirecting
                   ? "Sending you to Stripe..."
                   : hasActiveSubscription
-                    ? "You are subscribed"
-                    : "Subscribe to continue"}
+                  ? "You are subscribed"
+                  : "Subscribe to continue"}
               </button>
               <button
                 type="button"
@@ -270,7 +290,9 @@ const PaywallContent = () => {
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5">
-              <p className="text-sm font-semibold text-slate-700">Still exploring?</p>
+              <p className="text-sm font-semibold text-slate-700">
+                Still exploring?
+              </p>
               <p className="mt-2 text-sm text-slate-600">
                 Stay in the live demo as long as you want. No pressure.
               </p>
@@ -296,8 +318,12 @@ const PaywallContent = () => {
           <div className="space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-sm">
               <div className="flex items-center justify-between px-6 py-4">
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">UI sneak peek</p>
-                <span className="text-xs font-semibold text-slate-500">Live demo ready</span>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  UI sneak peek
+                </p>
+                <span className="text-xs font-semibold text-slate-500">
+                  Live demo ready
+                </span>
               </div>
               <div className="space-y-4 px-6 pb-6">
                 {peekImages.map((peek, idx) => (
@@ -306,8 +332,12 @@ const PaywallContent = () => {
                     className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-inner transition hover:-translate-y-1 hover:shadow-lg"
                   >
                     <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-slate-900 pl-2 pt-2">{peek.title}</p>
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">0{idx + 1}</span>
+                      <p className="text-sm font-semibold text-slate-900 pl-2 pt-2">
+                        {peek.title}
+                      </p>
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        0{idx + 1}
+                      </span>
                     </div>
                     <div className="relative mt-3 h-32 w-full overflow-hidden rounded-lg bg-slate-100">
                       <Image
