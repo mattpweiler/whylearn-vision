@@ -239,7 +239,7 @@ export const OnboardingFlow = () => {
               Rate each life area (1-10)
             </p>
             <p className="text-slate-600">
-              Quick gut check so we can tailor your plan.
+              So you can reflect and improve.
             </p>
           </div>
           <div className="space-y-4">
