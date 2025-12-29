@@ -71,10 +71,10 @@ export default function LandingPage() {
           Personal operating system
         </p>
         <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-          Attain goals, build habits, and excel in your life.
+        A simple life dashboard for your goals, habits & finances — all in one place.
         </h1>
         <p className="mt-6 max-w-2xl text-base text-slate-600 sm:text-lg">
-          Build the life you want, track your progress, and organize your finances. 
+        Plan your days, track your progress, and manage your money - all from one clean dashboard.
           
           Explore the live demo or sign in.
         </p>
@@ -101,7 +101,7 @@ export default function LandingPage() {
               <div className="space-y-2 text-slate-700">
                 <p className="text-sm font-semibold uppercase tracking-[0.15em] text-slate-500">Founder note</p>
                 <p className="text-lg font-semibold text-slate-900">
-                  Built for ambitious creatives and operators who want a single source of truth.
+                 Built for creators, freelancers, and ambitious operators who want one place to run their life.
                 </p>
                 <p className="text-sm leading-relaxed text-slate-600">
                   Life is hard to organize, especially around finances and my day to day life. I couldn&apos;t find an all in one place to plan my days, check in on finances, and organize my life in a way that actually move the week forward. WhyLearn Vision is the tool I wanted for myself.
