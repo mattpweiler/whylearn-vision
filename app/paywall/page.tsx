@@ -23,7 +23,8 @@ type SubscriptionResponse = {
 const featureList = [
   "Goal planning, habit tracking, and reflections",
   "Financial Freedom Calculator and Monthly Profit Tracker",
-  "Productivity helpers to help you plan and win each day"
+  "Productivity helpers to help you plan and win each day",
+  "Vote on the Next Features we Build"
 ];
 
 const peekImages = [
@@ -229,8 +230,8 @@ const PaywallContent = () => {
             <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">What to expect</p>
               <div className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-3">
-                {[{ week: "Week 1", copy: "Plan your days, ship the next three wins, and feel in control." },
-                  { week: "Week 4", copy: "Weekly reviews and suggested next steps keep you on rhythm." },
+                {[{ week: "Week 1", copy: "Plan your days, accomplish what you want, and feel in control." },
+                  { week: "Week 4", copy: "Find that groove and start tracking your progress" },
                   { week: "Week 12", copy: "See trends across goals, habits, and finances with less chaos." }].map((item) => (
                   <div key={item.week} className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">{item.week}</p>
@@ -249,7 +250,7 @@ const PaywallContent = () => {
                 {statusMessage ??
                   (hasActiveSubscription
                     ? "You are all set. We will redirect you shortly."
-                    : "Subscribe to continue into your workspace.")}
+                    : "Subscribe to continue into your workspace. Can Cancel Anytime.")}
               </p>
               {subscription?.current_period_end ? (
                 <p className="mt-2 text-xs text-slate-500">
@@ -335,33 +336,6 @@ const PaywallContent = () => {
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5">
-              <p className="text-sm font-semibold text-slate-700">What happens next</p>
-              <div className="mt-3 space-y-3 text-sm text-slate-700">
-                <div className="flex gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700">1</span>
-                  <div>
-                    <p className="font-semibold text-slate-900">Subscribe</p>
-                    <p className="text-slate-600">Stripe confirms instantly. You can cancel anytime in billing.</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700">2</span>
-                  <div>
-                    <p className="font-semibold text-slate-900">Set your baseline</p>
-                    <p className="text-slate-600">Choose your home view, log your next wins, and connect finances if you want.</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700">3</span>
-                  <div>
-                    <p className="font-semibold text-slate-900">Get guided nudges</p>
-                    <p className="text-slate-600">Weekly reviews keep you honest and celebrate the progress you're making.</p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
