@@ -34,11 +34,11 @@ const createSupabaseRouteClient = (request: NextRequest) =>
 export const POST = async (request: NextRequest) => {
   const supabase = createSupabaseRouteClient(request);
   const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (sessionError || !session?.user) {
+  if (userError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -53,7 +53,7 @@ export const POST = async (request: NextRequest) => {
   const { data: subscriptionRow } = await supabase
     .from("subscriptions")
     .select("stripe_customer_id")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .maybeSingle();
 
   const redirectTo = request.nextUrl.searchParams.get("redirectTo");
@@ -84,11 +84,11 @@ export const POST = async (request: NextRequest) => {
       customer: subscriptionRow?.stripe_customer_id ?? undefined,
       customer_email: subscriptionRow?.stripe_customer_id
         ? undefined
-        : session.user.email ?? undefined,
-      client_reference_id: session.user.id,
-      metadata: { user_id: session.user.id },
+        : user.email ?? undefined,
+      client_reference_id: user.id,
+      metadata: { user_id: user.id },
       subscription_data: {
-        metadata: { user_id: session.user.id },
+        metadata: { user_id: user.id },
       },
     });
 

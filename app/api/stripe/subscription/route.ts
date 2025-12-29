@@ -30,11 +30,11 @@ const createSupabaseRouteClient = (request: NextRequest) =>
 export const GET = async (request: NextRequest) => {
   const supabase = createSupabaseRouteClient(request);
   const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (sessionError || !session?.user) {
+  if (userError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -43,7 +43,7 @@ export const GET = async (request: NextRequest) => {
     .select(
       "status, price_id, current_period_end, stripe_customer_id, stripe_subscription_id"
     )
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .maybeSingle();
 
   if (error) {

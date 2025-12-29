@@ -86,11 +86,11 @@ const upsertSubscription = async (payload: {
 export const POST = async (request: NextRequest) => {
   const supabase = createSupabaseRouteClient(request);
   const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (sessionError || !session?.user) {
+  if (userError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -116,7 +116,7 @@ export const POST = async (request: NextRequest) => {
 
     if (
       checkoutSession.client_reference_id &&
-      checkoutSession.client_reference_id !== session.user.id
+      checkoutSession.client_reference_id !== user.id
     ) {
       return NextResponse.json(
         { error: "Session does not belong to this user." },
@@ -138,7 +138,7 @@ export const POST = async (request: NextRequest) => {
         : (checkoutSession.subscription as Stripe.Subscription);
 
     await upsertSubscription({
-      userId: session.user.id,
+      userId: user.id,
       stripeCustomerId:
         typeof subscription.customer === "string"
           ? subscription.customer
