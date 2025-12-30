@@ -71,7 +71,7 @@ export default function LandingPage() {
           Personal operating system
         </p>
         <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-        A simple life dashboard for your goals, habits & finances — all in one place.
+        A simple life dashboard for your goals, habits & finances - all in one place.
         </h1>
         <p className="mt-6 max-w-2xl text-base text-slate-600 sm:text-lg">
         Plan your days, track your progress, and manage your money - all from one clean dashboard.
