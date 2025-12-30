@@ -355,8 +355,7 @@ const PaywallContent = () => {
             </div>
           </div>
         </div>
-      </div>
-      <p className="mt-8 text-center text-xs text-slate-500">
+        <p className="mt-8 text-center text-xs text-slate-500">
         By continuing you agree to our{" "}
         <a
           href="/privacy"
@@ -377,6 +376,7 @@ const PaywallContent = () => {
         </a>
         .
       </p>
+      </div>
     </div>
   );
 };
