@@ -46,6 +46,13 @@ const productPeeks = [
   },
 ];
 
+const pricingFeatures = [
+  "Full planning suite for day, week, and month",
+  "Financial dashboard and cash-flow tracking",
+  "Goal and habit tracking with reflections",
+  "Cancel anytime",
+];
+
 export default function LandingPage() {
   const [activePeek, setActivePeek] = useState<(typeof productPeeks)[number] | null>(null);
 
@@ -84,6 +91,32 @@ export default function LandingPage() {
               {action.label}
             </Link>
           ))}
+        </div>
+
+        <div className="mt-10 w-full max-w-4xl rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Pricing
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">$5.99/month</p>
+              <p className="text-sm text-slate-600">One simple plan. Cancel anytime.</p>
+            </div>
+            <Link
+              href="/auth/sign-up"
+              className="inline-flex w-full items-center justify-center rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-500 sm:w-auto"
+            >
+              Sign Up / Subscribe
+            </Link>
+          </div>
+          <ul className="mt-4 grid gap-3 text-left text-sm text-slate-700 sm:grid-cols-2">
+            {pricingFeatures.map((feature) => (
+              <li key={feature} className="flex items-start gap-2">
+                <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div className="mt-10 w-full max-w-3xl text-left">
