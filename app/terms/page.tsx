@@ -20,7 +20,7 @@ export default function TermsOfServicePage() {
       <section className="space-y-3">
         <h2 className="text-xl font-semibold text-slate-900">1. Who Can Use WhyLearn Vision</h2>
         <p>
-          You must be legally able to enter into this agreement where you live. If you are under the age of majority,
+          You must be legally able to enter into this agreement where you live and are at least 16+ to use this app. If you are under the age of majority,
           use the app only with permission from a parent or guardian.
         </p>
       </section>
