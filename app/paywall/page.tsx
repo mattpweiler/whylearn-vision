@@ -356,6 +356,27 @@ const PaywallContent = () => {
           </div>
         </div>
       </div>
+      <p className="mt-8 text-center text-xs text-slate-500">
+        By continuing you agree to our{" "}
+        <a
+          href="/privacy"
+          className="font-semibold text-slate-900 underline"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Privacy Policy
+        </a>{" "}
+        and{" "}
+        <a
+          href="/terms"
+          className="font-semibold text-slate-900 underline"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Terms of Service
+        </a>
+        .
+      </p>
     </div>
   );
 };
