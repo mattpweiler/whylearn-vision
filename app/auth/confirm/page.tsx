@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSupabase } from "@/components/providers/SupabaseProvider";
 
-export default function ConfirmEmailPage() {
+const ConfirmEmailContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { supabase } = useSupabase();
@@ -54,5 +54,13 @@ export default function ConfirmEmailPage() {
         </p>
       </div>
     </div>
+  );
+};
+
+export default function ConfirmEmailPage() {
+  return (
+    <Suspense fallback={null}>
+      <ConfirmEmailContent />
+    </Suspense>
   );
 }
