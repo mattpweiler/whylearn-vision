@@ -47,6 +47,9 @@ export const AuthForm = ({ mode }: { mode: AuthMode }) => {
     setIsSubmitting(true);
     try {
       const payload = { email, password };
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ??
+        (typeof window !== "undefined" ? window.location.origin : "");
       if (mode === "signIn") {
         const { error: authError } = await supabase.auth.signInWithPassword(
           payload
@@ -60,7 +63,12 @@ export const AuthForm = ({ mode }: { mode: AuthMode }) => {
         return;
       }
 
-      const { data, error: authError } = await supabase.auth.signUp(payload);
+      const { data, error: authError } = await supabase.auth.signUp({
+        ...payload,
+        options: {
+          emailRedirectTo: `${baseUrl.replace(/\/$/, "")}/auth/confirm`,
+        },
+      });
       if (authError) {
         throw authError;
       }
