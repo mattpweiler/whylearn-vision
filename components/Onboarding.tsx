@@ -296,6 +296,9 @@ export const OnboardingFlow = () => {
     if (step === 3) {
       return (
         <div className="w-full max-w-2xl space-y-6">
+           <p className="text-2xl font-semibold text-slate-900">
+          General Questions
+        </p>
           <div className="space-y-4">
             {questions.map((q) => (
               <label key={q.key} className="block">
@@ -315,6 +318,16 @@ export const OnboardingFlow = () => {
               </label>
             ))}
           </div>
+          <p className="text-sm text-slate-600">
+            Email{" "}
+            <a
+              href="mailto:whylearnwednesdays@gmail.com"
+              className="font-semibold text-slate-900 underline"
+            >
+              whylearnwednesdays@gmail.com
+            </a>{" "}
+            your Discord username if you want to be added to the private role in our Discord server! Here we will discuss new features, get feedback, and share tips on how to get the most out of WhyLearn Vision. We will do monthly check in calls as a group while the app is still small!
+          </p>
           <div className="flex gap-4">
             <button
               className="flex-1 rounded-xl border border-slate-200 py-3 text-slate-700"
