@@ -6,22 +6,16 @@ import Link from "next/link";
 
 const actions = [
   {
-    label: "Explore demo",
+    label: "Sign Up",
+    href: "/auth/sign-up",
+    style:
+      "rounded-full border border-transparent bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900/90 hover:-translate-y-0.5",
+  },
+  {
+    label: "Explore Demo",
     href: "/demo",
     style:
       "rounded-full border border-slate-900/10 bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:-translate-y-0.5",
-  },
-  {
-    label: "Sign in",
-    href: "/auth/sign-in",
-    style:
-      "rounded-full border border-transparent bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900/90",
-  },
-  {
-    label: "Sign up",
-    href: "/auth/sign-up",
-    style:
-      "rounded-full border border-slate-200 bg-slate-100 px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-200",
   },
 ];
 
@@ -58,8 +52,14 @@ export default function LandingPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-gradient-to-b from-white to-slate-50">
-      <div className="absolute inset-x-0 top-0 -z-10 h-[400px] bg-gradient-to-b from-slate-100 via-white to-transparent" />
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[800px]"
+        style={{
+          background:
+            "radial-gradient(circle at top center, rgba(0, 188, 125, 0.2) 0%, rgba(255, 255, 255, 0) 100%)",
+        }}
+      />
+      <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
         <p className="text-base font-semibold tracking-tight text-slate-900">
           WhyLearn Vision
         </p>
@@ -73,7 +73,7 @@ export default function LandingPage() {
           </Link>
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-6 text-center">
+      <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-6 text-center">
         <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
           Personal operating system
         </p>
@@ -93,41 +93,15 @@ export default function LandingPage() {
           ))}
         </div>
 
-        <div className="mt-10 w-full max-w-4xl rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Pricing
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-slate-900">$5.99/month</p>
-              <p className="text-sm text-slate-600">One simple plan. Cancel anytime.</p>
-            </div>
-            <Link
-              href="/auth/sign-up"
-              className="inline-flex w-full items-center justify-center rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-500 sm:w-auto"
-            >
-              Sign Up / Subscribe
-            </Link>
-          </div>
-          <ul className="mt-4 grid gap-3 text-left text-sm text-slate-700 sm:grid-cols-2">
-            {pricingFeatures.map((feature) => (
-              <li key={feature} className="flex items-start gap-2">
-                <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
-                <span>{feature}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="mt-10 w-full max-w-3xl text-left">
+        <div className="mt-10 grid w-full max-w-6xl gap-6 text-left md:grid-cols-2">
           <div className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-sm backdrop-blur">
-            <div className="flex items-start gap-4">
-              <div className="relative h-12 w-20 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-start">
+              <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm">
                 <Image
                   src="/whylearnscreenshot.png"
                   alt="WhyLearn Vision workspace"
                   fill
-                  className="object-cover"
+                  className="object-contain"
                   sizes="48px"
                 />
               </div>
@@ -142,13 +116,39 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Pricing
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">$5.99/month</p>
+                <p className="text-sm text-slate-600">One simple plan. Cancel anytime.</p>
+              </div>
+              <Link
+                href="/paywall"
+                className="inline-flex w-full items-center justify-center rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-emerald-500 sm:w-auto"
+              >
+                Sign Up / Subscribe
+              </Link>
+            </div>
+            <ul className="mt-4 grid gap-3 text-left text-sm text-slate-700 sm:grid-cols-2">
+              {pricingFeatures.map((feature) => (
+                <li key={feature} className="flex items-start gap-2">
+                  <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
+                  <span>{feature}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
         <div className="mt-12 w-full max-w-6xl text-left">
           <div className="flex items-baseline justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Product peek</p>
-              <p className="mt-2 text-xl font-semibold text-slate-900">See how the workspace feels</p>
+              <p className="mt-2 mb-4 text-xl font-semibold text-slate-900">See how the workspace feels</p>
             </div>
             <Link
               href="/demo"
@@ -157,11 +157,11 @@ export default function LandingPage() {
               Jump into the live demo
             </Link>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {productPeeks.map((peek, idx) => (
               <div
                 key={peek.title}
-                className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+                className="group hover:cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
               >
                 <div className="flex items-center justify-between px-4 py-3">
                   <p className="text-sm font-semibold text-slate-900">{peek.title}</p>
