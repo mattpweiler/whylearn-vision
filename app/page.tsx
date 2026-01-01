@@ -63,6 +63,12 @@ export default function LandingPage() {
         <p className="text-base font-semibold tracking-tight text-slate-900">
           WhyLearn Vision
         </p>
+        <Link
+          href="/auth/sign-in"
+          className="inline-flex items-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 md:hidden"
+        >
+          Sign in
+        </Link>
         <div className="hidden items-center gap-4 text-sm font-medium text-slate-500 md:flex">
           <Link href="/auth/sign-in">Sign in</Link>
           <Link

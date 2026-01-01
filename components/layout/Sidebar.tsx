@@ -48,7 +48,7 @@ export const Sidebar = ({
           return (
             <button
               key={item.key}
-              className={`group flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition ${
+              className={`group flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition cursor-pointer ${
                 disabled
                   ? "cursor-not-allowed border border-dashed border-slate-200 bg-slate-100 text-slate-400 opacity-70"
                   : active

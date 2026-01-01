@@ -850,7 +850,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
           <div className="flex flex-wrap items-center gap-3">
             <div className="rounded-2xl bg-slate-100 p-1">
               <button
-                className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                className={`rounded-xl px-4 py-2 text-sm font-semibold transition cursor-pointer hover:-translate-y-0.5 ${
                   mode === "week"
                     ? "bg-white text-slate-900 shadow"
                     : "text-slate-500"
@@ -860,7 +860,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                 Week view
               </button>
               <button
-                className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                className={`rounded-xl px-4 py-2 text-sm font-semibold transition cursor-pointer hover:-translate-y-0.5 ${
                   mode === "month"
                     ? "bg-white text-slate-900 shadow"
                     : "text-slate-500"
@@ -872,19 +872,19 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
             </div>
             <div className="flex rounded-2xl border border-slate-200">
               <button
-                className="rounded-l-2xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"
+                className="rounded-l-2xl px-3 py-2 text-sm text-slate-600 transition cursor-pointer hover:-translate-y-0.5 hover:bg-slate-100"
                 onClick={goBackward}
               >
                 ←
               </button>
               <button
-                className="px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"
+                className="px-3 py-2 text-sm text-slate-600 transition cursor-pointer hover:-translate-y-0.5 hover:bg-slate-100"
                 onClick={goToToday}
               >
                 Today
               </button>
               <button
-                className="rounded-r-2xl px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"
+                className="rounded-r-2xl px-3 py-2 text-sm text-slate-600 transition cursor-pointer hover:-translate-y-0.5 hover:bg-slate-100"
                 onClick={goForward}
               >
                 →
@@ -922,10 +922,10 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                 return (
                   <button
                     key={dateKey}
-                    className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border p-3 text-left transition ${
+                    className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border p-3 text-left transition cursor-pointer ${
                       isSelected
                         ? "border-slate-900 bg-slate-900/5"
-                        : "border-slate-100 hover:border-slate-200"
+                        : "border-slate-100 hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-sm"
                     }`}
                     onClick={() => openDayModal(dateKey)}
                     onDragOver={(e) => e.preventDefault()}
@@ -933,7 +933,9 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                         e.preventDefault();
                         handleTaskDrop(dateKey);
                       }}
-                    >
+                    type="button"
+                    aria-label={`Day ${displayLabel}`}
+                  >
                       <div className="flex items-center justify-between text-sm font-semibold">
                         <span>
                           <span className="md:hidden">{displayLabel}</span>
@@ -994,10 +996,10 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                     return (
                       <button
                         key={day.key}
-                        className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border p-3 text-left text-sm transition ${
+                        className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border p-3 text-left text-sm transition cursor-pointer ${
                           isSelected
                             ? "border-slate-900 bg-slate-900/5"
-                            : "border-slate-100 hover:border-slate-200"
+                            : "border-slate-100 hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-sm"
                         } ${day.inMonth ? "" : "opacity-60"}`}
                         onClick={() => openDayModal(day.key, !day.inMonth)}
                         onDragOver={(e) => e.preventDefault()}
@@ -1005,7 +1007,11 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                             e.preventDefault();
                             handleTaskDrop(day.key);
                           }}
-                        >
+                        type="button"
+                        aria-label={`Day ${displayLabel}`}
+                        role="button"
+                        tabIndex={0}
+                      >
                           <div className="flex items-center justify-between font-semibold">
                             <span>
                               <span className="md:hidden">{displayLabel}</span>

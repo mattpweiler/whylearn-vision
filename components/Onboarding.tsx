@@ -17,6 +17,10 @@ const questions = [
     key: "downloadReason",
     label: "What brought you to download the app?",
   },
+  {
+    key: "discordHandle",
+    label: "Your Discord username (optional, so we can add you)",
+  },
 ] as const;
 
 type GoalEntry = {
@@ -116,10 +120,14 @@ export const OnboardingFlow = () => {
       displayName: answers.displayName?.trim() ?? "",
       downloadReason: answers.downloadReason?.trim() ?? "",
       currentFeeling: answers.currentFeeling?.trim() ?? "",
+      discordHandle: answers.discordHandle?.trim() ?? "",
     };
     const onboardingNote = [
       reflectionAnswers.downloadReason
         ? `Why you downloaded: ${reflectionAnswers.downloadReason}`
+        : "",
+      reflectionAnswers.discordHandle
+        ? `Discord handle: ${reflectionAnswers.discordHandle}`
         : "",
     ]
       .filter(Boolean)
@@ -296,9 +304,9 @@ export const OnboardingFlow = () => {
     if (step === 3) {
       return (
         <div className="w-full max-w-2xl space-y-6">
-           <p className="text-2xl font-semibold text-slate-900">
-          General Questions
-        </p>
+          <p className="text-2xl font-semibold text-slate-900">
+            General Questions
+          </p>
           <div className="space-y-4">
             {questions.map((q) => (
               <label key={q.key} className="block">
@@ -318,16 +326,33 @@ export const OnboardingFlow = () => {
               </label>
             ))}
           </div>
-          <p className="text-sm text-slate-600">
-            Email{" "}
-            <a
-              href="mailto:whylearnwednesdays@gmail.com"
-              className="font-semibold text-slate-900 underline"
-            >
-              whylearnwednesdays@gmail.com
-            </a>{" "}
-            your Discord username if you want to be added to the private role in our Discord server! Here we will discuss new features, get feedback, and share tips on how to get the most out of WhyLearn Vision. We will do monthly check in calls as a group while the app is still small!
-          </p>
+          <div className="space-y-2 text-sm text-slate-600">
+            <p>
+              Drop your Discord username above if you want the private role. You must already
+              be in the Discord to be added to the role.
+            </p>
+            <p>
+              Join link:{" "}
+              <a
+                href="https://discord.gg/tnBeQdq3sg"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-slate-900 underline"
+              >
+                discord.gg/tnBeQdq3sg
+              </a>
+            </p>
+            <p>
+              Or email your handle to{" "}
+              <a
+                href="mailto:whylearnwednesdays@gmail.com"
+                className="font-semibold text-slate-900 underline"
+              >
+                whylearnwednesdays@gmail.com
+              </a>{" "}
+              and we&apos;ll add you.
+            </p>
+          </div>
           <div className="flex gap-4">
             <button
               className="flex-1 rounded-xl border border-slate-200 py-3 text-slate-700"

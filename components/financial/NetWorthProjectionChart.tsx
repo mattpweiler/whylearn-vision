@@ -22,6 +22,7 @@ interface NetWorthProjectionChartProps {
 
 interface ProjectionPoint {
   month: number;
+  year: number;
   netWorth: number;
   label: string;
 }
@@ -50,13 +51,14 @@ const buildProjectionData = (
     const years = month / 12;
     points.push({
       month,
+      year: years,
       netWorth: current,
       label:
         month === 0
           ? "Now"
-          : years >= 1 && Number.isInteger(years)
+          : Number.isInteger(years)
             ? `${years} yr`
-            : `M${month}`,
+            : `${years.toFixed(1)} yr`,
     });
   }
 
@@ -96,11 +98,13 @@ export const NetWorthProjectionChart = ({
           <LineChart data={data} margin={{ left: 8, right: 24 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis
-              dataKey="label"
+              dataKey="year"
               tickLine={false}
               axisLine={false}
               interval="preserveStartEnd"
+              domain={[0, projectionYears]}
               tick={{ fill: "#475569", fontSize: 12 }}
+              tickFormatter={(value: number) => `${value} yr`}
             />
             <YAxis
               tickFormatter={(value) => formatCurrency(value as number)}
@@ -111,7 +115,10 @@ export const NetWorthProjectionChart = ({
             />
             <Tooltip
               formatter={(value: number) => formatCurrency(value)}
-              labelFormatter={(label: string) => `Month: ${label}`}
+              labelFormatter={(label: string, payload) => {
+                const point = payload?.[0]?.payload as ProjectionPoint | undefined;
+                return point ? `Year ${point.year.toFixed(1)}` : label;
+              }}
               contentStyle={{
                 borderRadius: 16,
                 borderColor: "#cbd5f5",
