@@ -133,7 +133,7 @@ export default function LandingPage() {
                 <p className="text-sm text-slate-600">One simple plan. Cancel anytime.</p>
               </div>
               <Link
-                href="/paywall"
+                href="/auth/sign-up"
                 className="inline-flex w-full items-center justify-center rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-emerald-500 sm:w-auto"
               >
                 Sign Up / Subscribe
