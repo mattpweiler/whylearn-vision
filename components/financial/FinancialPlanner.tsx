@@ -450,7 +450,7 @@ export const FinancialPlanner = ({
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-500">
-                    Freedom Score
+                    Freedom Score (Experimental - Not Advice)
                   </p>
                   <p className="text-3xl font-bold text-slate-900">
                     {freedomScore.score}/100
