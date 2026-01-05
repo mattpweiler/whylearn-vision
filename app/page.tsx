@@ -44,6 +44,7 @@ const pricingFeatures = [
   "Full planning suite for day, week, and month",
   "Financial dashboard and cash-flow tracking",
   "Goal and habit tracking with reflections",
+  "Exclusive Discord Role to connect with myself and other users",
   "Cancel anytime",
 ];
 
