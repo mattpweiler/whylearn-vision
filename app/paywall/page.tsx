@@ -25,6 +25,7 @@ const featureList = [
   "Financial Freedom Calculator and Monthly Profit Tracker",
   "Productivity helpers to help you plan and win each day",
   "Vote on the Next Features we Build",
+  "Exclusive Discord Role to connect with myself and other users"
 ];
 
 const peekImages = [

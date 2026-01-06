@@ -510,7 +510,7 @@ export const OnboardingFlow = () => {
               onChange={(color) => setGoalDraft((prev) => ({ ...prev, color }))}
             />
             <button
-              className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white"
+              className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-emerald-500 cursor-pointer"
               onClick={addGoalEntry}
             >
               + Add goal
@@ -604,7 +604,7 @@ export const OnboardingFlow = () => {
             ))}
           </select>
           <button
-            className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white"
+            className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-emerald-500 cursor-pointer"
             onClick={addHabitEntry}
           >
             + Add habit
