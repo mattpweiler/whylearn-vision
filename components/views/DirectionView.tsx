@@ -84,7 +84,7 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
 
   const recentReflections = [...state.reflections]
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-    .slice(0, 5);
+    .slice(0, 25);
 
   const toggleReflectionExpansion = (id: string) => {
     setExpandedReflectionIds((prev) =>
