@@ -16,6 +16,8 @@ export interface LifeArea {
   sortOrder: number;
 }
 
+export type CurrencyCode = "USD" | "GBP" | "EUR" | "CAD" | "MXN";
+
 export interface LifeAreaScore {
   id: string;
   lifeAreaId: number;
@@ -46,6 +48,10 @@ export interface Goal {
   isStarred: boolean;
   createdAt: string;
   color: GoalColor;
+  metricTarget?: number | null;
+  metricOptOut?: boolean;
+  metricManualTracking?: boolean;
+  metricManualProgress?: number | null;
 }
 
 export interface Habit {
@@ -82,6 +88,9 @@ export interface Task {
   scheduledFor?: string;
   scheduledDate?: string | null;
   month?: string;
+  recurrenceGroupId?: string;
+  recurrenceCadence?: "weekly" | "monthly";
+  recurrenceStartDate?: string;
   backlogCategory?: string;
   orderIndex: number;
   createdAt: string;
@@ -127,6 +136,7 @@ export interface UserSettings {
   weekStartDay: 0 | 1;
   showLifeAreaSummaryOnToday: boolean;
   autoGenerateTasksFromAi: boolean;
+  currency: CurrencyCode;
 }
 
 export interface Profile {

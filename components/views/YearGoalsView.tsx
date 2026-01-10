@@ -21,6 +21,10 @@ const defaultGoal = () => ({
   priority: "medium" as PriorityLevel,
   targetDate: "",
   color: DEFAULT_GOAL_COLOR as GoalColor,
+  metricTarget: "",
+  metricOptOut: false,
+  metricManualTracking: false,
+  metricManualProgress: "",
 });
 
 export const YearGoalsView = ({ state, updateState }: ViewProps) => {
@@ -40,6 +44,10 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
     priority: "medium" as PriorityLevel,
     targetDate: "",
     color: DEFAULT_GOAL_COLOR as GoalColor,
+    metricTarget: "",
+    metricOptOut: false,
+    metricManualTracking: false,
+    metricManualProgress: "",
   });
   const [showNewGoalForm, setShowNewGoalForm] = useState(false);
   const [showGoalTips, setShowGoalTips] = useState(false);
@@ -48,6 +56,16 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
     high: "bg-rose-100 text-rose-700 border-rose-200",
     medium: "bg-amber-100 text-amber-700 border-amber-200",
     low: "bg-slate-100 text-slate-600 border-slate-200",
+  };
+
+  const parseMetricInput = (value: string) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  };
+
+  const parseManualProgressInput = (value: string) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
   };
 
   const activeGoals = state.goals.filter((goal) => goal.status === "active");
@@ -83,6 +101,14 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
     const endOfYear = new Date(new Date().getFullYear(), 11, 31)
       .toISOString()
       .slice(0, 10);
+    const metricOptOut = form.metricOptOut;
+    const metricTarget = metricOptOut
+      ? null
+      : parseMetricInput(form.metricTarget) ?? null;
+    const metricManualTracking = !metricOptOut && form.metricManualTracking;
+    const metricManualProgress = metricManualTracking
+      ? parseManualProgressInput(form.metricManualProgress) ?? 0
+      : null;
     const goal: any = {
       id: generateId(),
       title: form.title.trim(),
@@ -92,6 +118,10 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
       status: "active",
       createdAt: now,
       color: form.color ?? DEFAULT_GOAL_COLOR,
+      metricTarget,
+      metricOptOut,
+      metricManualTracking,
+      metricManualProgress,
     };
     updateState((prev) => ({ ...prev, goals: [goal, ...prev.goals] }));
     setForm(defaultGoal());
@@ -116,11 +146,29 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
       priority: goal.priority,
       targetDate: goal.targetDate ?? "",
       color: goal.color ?? DEFAULT_GOAL_COLOR,
+      metricTarget:
+        goal.metricOptOut || goal.metricTarget === undefined || goal.metricTarget === null
+          ? ""
+          : String(goal.metricTarget),
+      metricOptOut: goal.metricOptOut ?? false,
+      metricManualTracking: goal.metricManualTracking ?? false,
+      metricManualProgress:
+        goal.metricManualTracking && goal.metricManualProgress !== undefined && goal.metricManualProgress !== null
+          ? String(goal.metricManualProgress)
+          : "",
     });
   };
 
   const saveGoalEdit = () => {
     if (!editingGoalId) return;
+    const metricOptOut = goalEdit.metricOptOut;
+    const metricTarget = metricOptOut
+      ? null
+      : parseMetricInput(goalEdit.metricTarget) ?? null;
+    const metricManualTracking = !metricOptOut && goalEdit.metricManualTracking;
+    const metricManualProgress = metricManualTracking
+      ? parseManualProgressInput(goalEdit.metricManualProgress) ?? 0
+      : null;
     updateState((prev) => ({
       ...prev,
       goals: prev.goals.map((goal) =>
@@ -132,6 +180,10 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
               priority: goalEdit.priority,
               targetDate: goalEdit.targetDate || undefined,
               color: goalEdit.color ?? DEFAULT_GOAL_COLOR,
+              metricTarget,
+              metricOptOut,
+              metricManualTracking,
+              metricManualProgress,
             }
           : goal
       ),
@@ -218,26 +270,127 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
         <div className="mt-4 space-y-3">
           {activeGoals.map((goal) => {
             const goalStats = taskCounts[goal.id] ?? { total: 0, done: 0 };
+            const metricTarget =
+              goal.metricOptOut ||
+              goal.metricTarget === undefined ||
+              goal.metricTarget === null
+                ? null
+                : goal.metricTarget;
+            const hasMetricTarget =
+              typeof metricTarget === "number" && Number.isFinite(metricTarget) && metricTarget > 0;
+            const usesManualTracking = (goal.metricManualTracking ?? false) && !goal.metricOptOut;
+            const manualProgressRaw =
+              usesManualTracking && typeof goal.metricManualProgress === "number"
+                ? goal.metricManualProgress
+                : 0;
+            const manualProgress =
+              Number.isFinite(manualProgressRaw) && manualProgressRaw >= 0
+                ? manualProgressRaw
+                : 0;
+            const progressDone = usesManualTracking ? manualProgress : goalStats.done;
+            const progressDenominator = usesManualTracking
+              ? hasMetricTarget
+                ? metricTarget
+                : manualProgress > 0
+                ? manualProgress
+                : metricTarget ?? 0
+              : hasMetricTarget
+              ? metricTarget
+              : goalStats.total;
             const goalPercent =
-              goalStats.total === 0
+              progressDenominator === 0
                 ? 0
-                : Math.min(100, Math.round((goalStats.done / goalStats.total) * 100));
+                : Math.min(100, Math.round((progressDone / progressDenominator) * 100));
+            const remaining = hasMetricTarget
+              ? Math.max(metricTarget - progressDone, 0)
+              : Math.max(goalStats.total - goalStats.done, 0);
+            const targetMillis = goal.targetDate
+              ? new Date(goal.targetDate).getTime()
+              : null;
+            const daysUntilTarget =
+              targetMillis && !Number.isNaN(targetMillis)
+                ? Math.max(
+                    0,
+                    Math.ceil((targetMillis - Date.now()) / (1000 * 60 * 60 * 24))
+                  )
+                : null;
+            const pacePerWeek =
+              hasMetricTarget && daysUntilTarget && daysUntilTarget > 0
+                ? Math.max(1, Math.ceil((remaining / daysUntilTarget) * 7))
+                : null;
+            const missingMetric = !goal.metricOptOut && !usesManualTracking && !hasMetricTarget;
+            const metricStatus = goal.metricOptOut
+              ? "No metric"
+              : usesManualTracking
+              ? hasMetricTarget
+                ? `Manual: ${progressDone}/${metricTarget}`
+                : `Manual: ${progressDone}`
+              : hasMetricTarget
+              ? `${goalStats.done}/${metricTarget} done`
+              : "Please Quantify Goal";
+            const metricStatusClass = [
+              "text-[10px] uppercase tracking-wide",
+              missingMetric ? "text-red-600" : "text-slate-500",
+            ].join(" ");
+            const metricNote = goal.metricOptOut
+              ? "No metric needed"
+              : usesManualTracking
+              ? hasMetricTarget
+                ? "Tracking manually toward your target"
+                : "Tracking progress manually"
+              : hasMetricTarget
+              ? `Metric target: ${metricTarget} tasks`
+              : "No metric set yet—using tasks created";
+            const progressLabel = goal.metricOptOut
+              ? goalStats.total > 0
+                ? `${goalStats.done}/${goalStats.total} tasks`
+                : "Not tracked"
+              : usesManualTracking
+              ? hasMetricTarget
+                ? `${progressDone}/${metricTarget} manual`
+                : `${progressDone} tracked manually`
+              : hasMetricTarget
+              ? `${goalStats.done}/${metricTarget} tasks`
+              : goalStats.total > 0
+              ? `${goalStats.done}/${goalStats.total} tasks`
+              : "No tasks yet";
             return (
               <details
                 key={goal.id}
                 className="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition hover:border-slate-200 hover:bg-white hover:shadow-sm cursor-pointer"
               >
-              <summary className="flex cursor-pointer items-center justify-between text-sm font-semibold text-slate-900">
-                <span className="flex items-center gap-2">
-                  <span
-                    className="h-3 w-3 rounded-full border border-slate-200"
-                    style={{ backgroundColor: goal.color, color: "#0f172a" }}
-                    aria-hidden
-                  />
-                  <span>{goal.title}</span>
-                </span>
+              <summary className="flex cursor-pointer flex-wrap items-center gap-3 text-sm font-semibold text-slate-900">
+                <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-3">
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="h-3 w-3 rounded-full border border-slate-200"
+                      style={{ backgroundColor: goal.color, color: "#0f172a" }}
+                      aria-hidden
+                    />
+                    <span>{goal.title}</span>
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-600">
+                    <span className="flex items-center gap-2 rounded-full bg-white px-3 py-1 shadow-sm">
+                      <span className="text-lg font-bold text-slate-900">{goalPercent}%</span>
+                      <span className={metricStatusClass}>
+                        {metricStatus}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+                <div className="flex min-w-[160px] flex-1 items-center gap-2 md:flex-none">
+                  <div className="h-2 flex-1 rounded-full bg-slate-200">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-all"
+                      style={{ width: `${goalPercent}%` }}
+                    />
+                  </div>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    {progressLabel}
+                  </span>
+                </div>
                 <span
-                  className={`text-xs font-semibold border rounded-full px-3 py-1 ${priorityBadgeStyles[goal.priority]}`}
+                  className={`ml-auto rounded-full border px-3 py-1 text-xs font-semibold ${priorityBadgeStyles[goal.priority]}`}
                 >
                   {goal.priority.toUpperCase()}
                 </span>
@@ -245,6 +398,7 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
               <div className="mt-3 space-y-2 text-sm text-slate-600">
                 {editingGoalId === goal.id ? (
                   <div className="space-y-3 rounded-2xl border border-slate-200 p-3">
+                    Title
                     <input
                       className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                       value={goalEdit.title}
@@ -252,6 +406,7 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                         setGoalEdit((prev) => ({ ...prev, title: e.target.value }))
                       }
                     />
+                    Description
                     <textarea
                       className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                       rows={2}
@@ -283,6 +438,115 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                           setGoalEdit((prev) => ({ ...prev, targetDate: e.target.value }))
                         }
                       />
+                    </div>
+                    <div className="space-y-3 text-xs text-slate-500">
+                      {(() => {
+                        const metricWarning =
+                          !goalEdit.metricOptOut &&
+                          !goalEdit.metricManualTracking &&
+                          !parseMetricInput(goalEdit.metricTarget);
+                        const inputClasses = [
+                          "w-full rounded-xl px-3 py-2 text-sm",
+                          metricWarning
+                            ? "border-red-300 text-red-700 placeholder:text-red-300 focus:border-red-400 focus:ring-red-100"
+                            : "border border-slate-200",
+                        ].join(" ");
+                        return (
+                          <>
+                            <div className="grid items-center gap-3 md:grid-cols-[1fr_auto]">
+                              <label className="flex flex-col gap-1 font-semibold text-slate-600">
+                                What does “done” look like? (number)
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step="any"
+                                  className={inputClasses}
+                                  value={goalEdit.metricTarget}
+                                  onChange={(e) =>
+                                    setGoalEdit((prev) => ({
+                                      ...prev,
+                                      metricTarget: e.target.value,
+                                      metricOptOut:
+                                        prev.metricOptOut && e.target.value
+                                          ? false
+                                          : prev.metricOptOut,
+                                    }))
+                                  }
+                                  disabled={goalEdit.metricOptOut}
+                                  placeholder="e.g. 12 tasks"
+                                />
+                                {metricWarning && (
+                                  <span className="text-[11px] font-normal text-red-600">
+                                    Add a metric, track manually, or select “No metric needed”
+                                  </span>
+                                )}
+                              </label>
+                              <div className="flex flex-col gap-2 font-semibold text-slate-600">
+                                <label className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    className="rounded border-slate-300"
+                                    checked={goalEdit.metricOptOut}
+                                    onChange={(e) =>
+                                    setGoalEdit((prev) => ({
+                                      ...prev,
+                                      metricOptOut: e.target.checked,
+                                      metricManualTracking: e.target.checked
+                                        ? false
+                                        : prev.metricManualTracking,
+                                      metricTarget: e.target.checked ? "" : prev.metricTarget,
+                                      metricManualProgress: e.target.checked
+                                        ? ""
+                                        : prev.metricManualProgress,
+                                    }))
+                                  }
+                                />
+                                  No metric needed
+                                </label>
+                                <label className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    className="rounded border-slate-300"
+                                    checked={goalEdit.metricManualTracking && !goalEdit.metricOptOut}
+                                    disabled={goalEdit.metricOptOut}
+                                    onChange={(e) =>
+                                      setGoalEdit((prev) => ({
+                                        ...prev,
+                                        metricManualTracking: e.target.checked,
+                                        metricOptOut: e.target.checked ? false : prev.metricOptOut,
+                                      }))
+                                    }
+                                  />
+                                  Track manually
+                                </label>
+                              </div>
+                            </div>
+                            {goalEdit.metricManualTracking && !goalEdit.metricOptOut && (
+                              <label className="flex flex-col gap-1 font-semibold text-slate-600">
+                                Manual progress (e.g. pounds lost, videos published)
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step="any"
+                                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                  value={goalEdit.metricManualProgress}
+                                  onChange={(e) =>
+                                    setGoalEdit((prev) => ({
+                                      ...prev,
+                                      metricManualProgress: e.target.value,
+                                      metricOptOut: false,
+                                    }))
+                                  }
+                                  placeholder="Enter current progress"
+                                />
+                                <span className="text-[11px] font-normal text-slate-500">
+                                  Enter where you are today. We’ll use this instead of counting tasks.
+                                </span>
+                              </label>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                     <GoalColorPicker
                       value={goalEdit.color}
@@ -320,17 +584,22 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                     </p>
                     <div className="rounded-2xl border border-slate-100 bg-white/70 p-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Task progress
+                        Goal progress
                       </p>
-                      <div className="mt-1 flex items-center justify-between text-xs text-slate-600">
-                        <span>
-                          {goalStats.done}/{goalStats.total} tasks
-                        </span>
-                        <span className="font-semibold text-slate-900">
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-2xl font-bold text-slate-900">
                           {goalPercent}%
                         </span>
+                        <span
+                          className={[
+                            "text-[11px] font-semibold uppercase tracking-wide",
+                            missingMetric ? "text-red-600" : "text-slate-500",
+                          ].join(" ")}
+                        >
+                          {metricStatus}
+                        </span>
                       </div>
-                      <div className="mt-1 h-2 rounded-full bg-slate-200">
+                      <div className="mt-2 h-2 rounded-full bg-slate-200">
                         <div
                           className="h-full rounded-full bg-emerald-500 transition-all"
                           style={{
@@ -338,13 +607,22 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                           }}
                         />
                       </div>
+                      <div className="mt-2 flex items-center justify-between text-xs text-slate-600">
+                        <span className="font-semibold text-slate-700">{progressLabel}</span>
+                        <span className="text-[11px] text-slate-500">{metricNote}</span>
+                      </div>
                     </div>
                   </>
                 )}
                 {editingGoalId !== goal.id && (
                   <div className="flex gap-3 text-xs">
                     <button
-                      className="font-semibold text-slate-600 hover:text-slate-900"
+                      className={[
+                        "font-semibold",
+                        missingMetric
+                          ? "text-red-600 underline decoration-red-400 decoration-2"
+                          : "text-slate-600 hover:text-slate-900",
+                      ].join(" ")}
                       onClick={() => startEdit(goal)}
                     >
                       Edit goal
@@ -426,6 +704,113 @@ export const YearGoalsView = ({ state, updateState }: ViewProps) => {
                   }
                 />
               </label>
+              <div className="md:col-span-2 space-y-3">
+                {(() => {
+                  const metricWarning =
+                    !form.metricOptOut &&
+                    !form.metricManualTracking &&
+                    !parseMetricInput(form.metricTarget);
+                  const inputClasses = [
+                    "mt-2 w-full rounded-2xl px-4 py-2 text-sm",
+                    metricWarning
+                      ? "border-red-300 text-red-700 placeholder:text-red-300 focus:border-red-400 focus:ring-red-100"
+                      : "border border-slate-200",
+                  ].join(" ");
+                  return (
+                    <>
+                      <div className="grid items-center gap-3 md:grid-cols-[1fr_auto]">
+                        <label className="text-sm font-medium text-slate-600">
+                          Metric target (number)
+                          <input
+                            type="number"
+                            min={0}
+                            step="any"
+                            className={inputClasses}
+                            value={form.metricTarget}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                metricTarget: e.target.value,
+                                metricOptOut:
+                                  prev.metricOptOut && e.target.value ? false : prev.metricOptOut,
+                              }))
+                            }
+                            disabled={form.metricOptOut}
+                            placeholder="e.g. 10 to finish"
+                          />
+                          {metricWarning && (
+                            <span className="text-[11px] font-normal text-red-600">
+                              Add a metric, track manually, or select “No metric needed”
+                            </span>
+                          )}
+                        </label>
+                        <div className="flex flex-col gap-2 text-sm font-semibold text-slate-600">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              className="rounded border-slate-300"
+                              checked={form.metricOptOut}
+                              onChange={(e) =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  metricOptOut: e.target.checked,
+                                  metricManualTracking: e.target.checked
+                                    ? false
+                                    : prev.metricManualTracking,
+                                  metricTarget: e.target.checked ? "" : prev.metricTarget,
+                                  metricManualProgress: e.target.checked
+                                    ? ""
+                                    : prev.metricManualProgress,
+                                }))
+                              }
+                            />
+                            No metric needed
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              className="rounded border-slate-300"
+                              checked={form.metricManualTracking && !form.metricOptOut}
+                              disabled={form.metricOptOut}
+                              onChange={(e) =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  metricManualTracking: e.target.checked,
+                                  metricOptOut: e.target.checked ? false : prev.metricOptOut,
+                                }))
+                              }
+                            />
+                            Track manually
+                          </label>
+                        </div>
+                      </div>
+                      {form.metricManualTracking && !form.metricOptOut && (
+                        <label className="text-sm font-medium text-slate-600">
+                          Manual progress right now
+                          <input
+                            type="number"
+                            min={0}
+                            step="any"
+                            className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm"
+                            value={form.metricManualProgress}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                metricManualProgress: e.target.value,
+                                metricOptOut: false,
+                              }))
+                            }
+                            placeholder="e.g. 5 (current progress)"
+                          />
+                          <span className="mt-1 block text-[11px] font-normal text-slate-500">
+                            We’ll use this number instead of counting tasks.
+                          </span>
+                        </label>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
               <div className="md:col-span-2">
                 <GoalColorPicker
                   value={form.color}

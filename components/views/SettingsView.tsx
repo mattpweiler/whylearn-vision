@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AppState, ViewKey } from "@/lib/types";
 import { useSupabase } from "@/components/providers/SupabaseProvider";
+import { CURRENCY_OPTIONS } from "@/lib/currency";
 
 interface ViewProps {
   state: AppState;
@@ -199,6 +200,24 @@ export const SettingsView = ({ state, updateState }: ViewProps) => {
               >
                 <option value={0}>Sunday</option>
                 <option value={1}>Monday</option>
+              </select>
+            </label>
+            <label className="block">
+              Currency
+              <select
+                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-2"
+                value={state.settings.currency}
+                onChange={(e) =>
+                  updateSettings({
+                    currency: e.target.value as AppState["settings"]["currency"],
+                  })
+                }
+              >
+                {CURRENCY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-xs">

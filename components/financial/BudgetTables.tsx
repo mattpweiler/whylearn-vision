@@ -1,5 +1,6 @@
 "use client";
 
+import { CurrencyCode } from "@/lib/types";
 import {
   AssetItem,
   ExpenseItem,
@@ -16,6 +17,7 @@ interface BudgetTableProps<T extends FinancialItem> {
   onChange: (items: T[]) => void;
   actionLabel: string;
   emptyHelper: string;
+  currency: CurrencyCode;
   readOnly?: boolean;
 }
 
@@ -25,6 +27,7 @@ const BudgetTable = <T extends FinancialItem>({
   onChange,
   actionLabel,
   emptyHelper,
+  currency,
   readOnly = false,
 }: BudgetTableProps<T>) => {
   const handleItemChange = (
@@ -133,7 +136,7 @@ const BudgetTable = <T extends FinancialItem>({
 
       <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-sm font-semibold text-slate-900">
         <span>Total</span>
-        <span>{formatCurrency(totalAmount)}</span>
+        <span>{formatCurrency(totalAmount, currency)}</span>
       </div>
     </div>
   );
@@ -142,16 +145,18 @@ const BudgetTable = <T extends FinancialItem>({
 interface IncomeTableProps {
   items: IncomeItem[];
   onChange: (items: IncomeItem[]) => void;
+  currency: CurrencyCode;
   readOnly?: boolean;
 }
 
-export const IncomeTable = ({ items, onChange, readOnly }: IncomeTableProps) => (
+export const IncomeTable = ({ items, onChange, currency, readOnly }: IncomeTableProps) => (
   <BudgetTable
     title="Income"
     items={items}
     onChange={onChange}
     actionLabel="Add Income"
     emptyHelper="Map the money coming in each month."
+    currency={currency}
     readOnly={readOnly}
   />
 );
@@ -159,16 +164,23 @@ export const IncomeTable = ({ items, onChange, readOnly }: IncomeTableProps) => 
 interface ExpenseTableProps {
   items: ExpenseItem[];
   onChange: (items: ExpenseItem[]) => void;
+  currency: CurrencyCode;
   readOnly?: boolean;
 }
 
-export const ExpenseTable = ({ items, onChange, readOnly }: ExpenseTableProps) => (
+export const ExpenseTable = ({
+  items,
+  onChange,
+  currency,
+  readOnly,
+}: ExpenseTableProps) => (
   <BudgetTable
     title="Expenses"
     items={items}
     onChange={onChange}
     actionLabel="Add Expense"
     emptyHelper="List recurring bills, lifestyle, and investments."
+    currency={currency}
     readOnly={readOnly}
   />
 );
@@ -176,16 +188,18 @@ export const ExpenseTable = ({ items, onChange, readOnly }: ExpenseTableProps) =
 interface AssetTableProps {
   items: AssetItem[];
   onChange: (items: AssetItem[]) => void;
+  currency: CurrencyCode;
   readOnly?: boolean;
 }
 
-export const AssetTable = ({ items, onChange, readOnly }: AssetTableProps) => (
+export const AssetTable = ({ items, onChange, currency, readOnly }: AssetTableProps) => (
   <BudgetTable
     title="Assets"
     items={items}
     onChange={onChange}
     actionLabel="Add Asset"
     emptyHelper="Track savings, investments, business equity."
+    currency={currency}
     readOnly={readOnly}
   />
 );
@@ -193,16 +207,23 @@ export const AssetTable = ({ items, onChange, readOnly }: AssetTableProps) => (
 interface LiabilityTableProps {
   items: LiabilityItem[];
   onChange: (items: LiabilityItem[]) => void;
+  currency: CurrencyCode;
   readOnly?: boolean;
 }
 
-export const LiabilityTable = ({ items, onChange, readOnly }: LiabilityTableProps) => (
+export const LiabilityTable = ({
+  items,
+  onChange,
+  currency,
+  readOnly,
+}: LiabilityTableProps) => (
   <BudgetTable
     title="Liabilities"
     items={items}
     onChange={onChange}
     actionLabel="Add Liability"
     emptyHelper="Mortgages, loans, and other obligations."
+    currency={currency}
     readOnly={readOnly}
   />
 );

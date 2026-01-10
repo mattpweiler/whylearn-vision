@@ -32,6 +32,9 @@ const serializeTask = (task: AppState["tasks"][number], userId: string) => ({
   due_date: asDateOrNull(task.dueDate),
   scheduled_for:
     asDateOrNull(task.scheduledDate) ?? asDateOrNull(task.scheduledFor),
+  recurrence_group_id: asTextOrNull(task.recurrenceGroupId),
+  recurrence_cadence: asTextOrNull(task.recurrenceCadence),
+  recurrence_start_date: asDateOrNull(task.recurrenceStartDate),
   order_index: task.orderIndex ?? 0,
   created_at: task.createdAt,
 });
@@ -48,6 +51,14 @@ const serializeGoal = (goal: AppState["goals"][number], userId: string) => ({
   is_starred: goal.isStarred ?? false,
   color_hex: normalizeGoalColor(goal.color),
   created_at: goal.createdAt,
+  metric_target: goal.metricOptOut ? null : goal.metricTarget ?? null,
+  metric_opt_out: goal.metricOptOut ?? false,
+  metric_manual_tracking:
+    goal.metricOptOut ? false : goal.metricManualTracking ?? false,
+  metric_manual_progress:
+    goal.metricOptOut || !(goal.metricManualTracking ?? false)
+      ? null
+      : goal.metricManualProgress ?? 0,
 });
 
 const serializeHabit = (
@@ -151,6 +162,7 @@ const serializeSettings = (state: AppState, userId: string) => ({
   week_start_day: state.settings.weekStartDay,
   show_life_area_summary: state.settings.showLifeAreaSummaryOnToday,
   auto_generate_tasks_from_ai: state.settings.autoGenerateTasksFromAi,
+  currency: state.settings.currency,
 });
 
 const diffCollection = <T extends { id: string }, R extends Record<string, unknown>>(

@@ -69,6 +69,7 @@ export default function PrivacyPolicyPage() {
           If you have questions about this policy or how WhyLearn handles data,
           reach out at whylearnwednesdays@gmail.com. We&apos;re happy to help.
         </p>
+        <p className="text-sm text-slate-500">WhyLearnTech LLC</p>
       </section>
     </main>
   );

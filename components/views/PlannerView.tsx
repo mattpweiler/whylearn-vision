@@ -10,9 +10,9 @@ import {
   generateId,
   isTaskCompleted,
   isWithinRange,
-  monthKey,
   monthLabel,
   normalizeDate,
+  recurrenceDatesForYear,
   sortTasks,
   startOfWeek,
   taskEffectiveDate,
@@ -23,6 +23,9 @@ import {
 import { TrashIcon } from "@/components/financial/TrashIcon";
 
 type PlannerMode = "week" | "month";
+type RecurrenceChoice = "none" | "weekly" | "monthly";
+
+const UNSCHEDULED_BUCKET = "__unscheduled";
 
 interface ViewProps {
   state: AppState;
@@ -52,11 +55,15 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
   const [mode, setMode] = useState<PlannerMode>("week");
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(today);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
   const [backlogTitle, setBacklogTitle] = useState("");
   const [backlogGoalId, setBacklogGoalId] = useState("");
   const [backlogCategory, setBacklogCategory] = useState("");
   const [backlogDueDate, setBacklogDueDate] = useState("");
+  const [backlogError, setBacklogError] = useState<string | null>(null);
+  const [backlogRecurrence, setBacklogRecurrence] =
+    useState<RecurrenceChoice>("none");
+  const [dayModalRecurrence, setDayModalRecurrence] =
+    useState<RecurrenceChoice>("none");
   const [showUnscheduledOnly, setShowUnscheduledOnly] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskEditDraft, setTaskEditDraft] = useState<{
@@ -72,27 +79,46 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
   });
   const [openTaskMenuId, setOpenTaskMenuId] = useState<string | null>(null);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  const [deletedPlaceholders, setDeletedPlaceholders] = useState<
+    { task: Task; bucketKey: string; orderIndex: number; timeoutId: ReturnType<typeof setTimeout> }[]
+  >([]);
+  const [pendingRecurringDelete, setPendingRecurringDelete] = useState<Task | null>(
+    null
+  );
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [expandedPastDates, setExpandedPastDates] = useState<Record<string, boolean>>({});
   const [includeNext7Days, setIncludeNext7Days] = useState(false);
   const [hidePastDates, setHidePastDates] = useState(true);
   const [dayModalDate, setDayModalDate] = useState<string | null>(null);
   const [dayModalTaskTitle, setDayModalTaskTitle] = useState("");
+  const recurrenceOptions: { value: RecurrenceChoice; label: string }[] = [
+    { value: "none", label: "Does not repeat" },
+    { value: "weekly", label: "Repeats weekly" },
+    { value: "monthly", label: "Repeats monthly" },
+  ];
 
   useEffect(() => {
     if (!openTaskMenuId) return;
-    const handler = (event: MouseEvent | TouchEvent) => {
+    const handler = (event: globalThis.MouseEvent | TouchEvent) => {
       const target = event.target as HTMLElement;
       if (target.closest(`[data-task-menu-id="${openTaskMenuId}"]`)) return;
       setOpenTaskMenuId(null);
     };
-    document.addEventListener("mousedown", handler as any);
-    document.addEventListener("touchstart", handler);
+    const handleMouseDown = (event: globalThis.MouseEvent) => handler(event);
+    const handleTouchStart = (event: TouchEvent) => handler(event);
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("touchstart", handleTouchStart);
     return () => {
-      document.removeEventListener("mousedown", handler as any);
-      document.removeEventListener("touchstart", handler);
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("touchstart", handleTouchStart);
     };
   }, [openTaskMenuId]);
+
+  useEffect(() => {
+    return () => {
+      deletedPlaceholders.forEach((item) => clearTimeout(item.timeoutId));
+    };
+  }, [deletedPlaceholders]);
 
   const normalizedAnchor = useMemo(
     () => normalizeDate(anchorDate),
@@ -118,10 +144,16 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
   const calendarRangeStartKey = formatDateKey(calendarStartDate);
   const calendarRangeEndKey = formatDateKey(calendarEndDate);
   const monthLabelText = monthLabel(monthStartDate);
-  const monthKeyValue = monthKey(monthStartDate);
 
   const rangeStartKey = mode === "week" ? weekRangeStartKey : calendarRangeStartKey;
   const rangeEndKey = mode === "week" ? weekRangeEndKey : calendarRangeEndKey;
+  const currentSelectedDate = useMemo(
+    () =>
+      isWithinRange(selectedDate, rangeStartKey, rangeEndKey)
+        ? selectedDate
+        : rangeStartKey,
+    [rangeEndKey, rangeStartKey, selectedDate]
+  );
   const extendedRangeEndKey = useMemo(() => {
     if (!includeNext7Days) return rangeEndKey;
     const parsed = parseDateKey(rangeEndKey);
@@ -129,23 +161,15 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     return formatDateKey(parsed);
   }, [includeNext7Days, rangeEndKey]);
 
-  useEffect(() => {
-    if (!isWithinRange(selectedDate, rangeStartKey, rangeEndKey)) {
-      setSelectedDate(rangeStartKey);
-    }
-  }, [rangeEndKey, rangeStartKey, selectedDate]);
-
-  const tasksByDate = useMemo(() => {
+  const tasksByDate = (() => {
     const grouped = tasksByDateWithinRange(state.tasks, rangeStartKey, rangeEndKey);
     const reordered: typeof grouped = {};
     Object.keys(grouped).forEach((key) => {
       reordered[key] = reorderByCompletion(sortTasks(grouped[key]));
     });
     return reordered;
-  }, [state.tasks, rangeEndKey, rangeStartKey]);
+  })();
 
-  const selectedDayTasks = tasksByDate[selectedDate] ?? [];
-  const selectedDayLabel = labelForDateKey(selectedDate);
   const dayModalTasks = dayModalDate ? tasksByDate[dayModalDate] ?? [] : [];
 
   const goalLookup = useMemo(() => {
@@ -179,7 +203,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     return [...pending, ...done];
   }
 
-  const groupedTasks = useMemo(() => {
+  const groupedTasks = (() => {
     const scheduled: Record<string, Task[]> = {};
     const unscheduled: Task[] = [];
     visibleTasks.forEach((task) => {
@@ -199,46 +223,20 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
       sortedDates: Object.keys(scheduled).sort(),
       unscheduled: reorderByCompletion(sortTasks(unscheduled)),
     };
-  }, [visibleTasks]);
-
-  const weeklyReflection = useMemo(
-    () =>
-      state.reflections.find(
-        (ref) =>
-          ref.type === "weekly" && ref.content?.weekStart === weekRangeStartKey
-      ),
-    [state.reflections, weekRangeStartKey]
+  })();
+  const placeholderBuckets = useMemo(
+    () => new Set(deletedPlaceholders.map((item) => item.bucketKey)),
+    [deletedPlaceholders]
   );
-
-  const [weeklyIntent, setWeeklyIntent] = useState(
-    weeklyReflection?.content?.intent ?? ""
-  );
-  const [weeklyPriorities, setWeeklyPriorities] = useState<string[]>(
-    weeklyReflection?.content?.priorities ?? ["", "", ""]
-  );
-
-  useEffect(() => {
-    setWeeklyIntent(weeklyReflection?.content?.intent ?? "");
-    setWeeklyPriorities(
-      weeklyReflection?.content?.priorities ?? ["", "", ""]
-    );
-  }, [weeklyReflection]);
-
-  const monthlyReflection = useMemo(
-    () =>
-      state.reflections.find(
-        (ref) => ref.type === "monthly" && ref.content?.month === monthKeyValue
-      ),
-    [state.reflections, monthKeyValue]
-  );
-
-  const [monthlyFocus, setMonthlyFocus] = useState(
-    monthlyReflection?.content?.focus ?? ""
-  );
-
-  useEffect(() => {
-    setMonthlyFocus(monthlyReflection?.content?.focus ?? "");
-  }, [monthlyReflection]);
+  const sortedScheduledBuckets = (() => {
+    const keys = new Set<string>(Object.keys(groupedTasks.scheduled));
+    deletedPlaceholders.forEach((item) => {
+      if (item.bucketKey !== UNSCHEDULED_BUCKET) {
+        keys.add(item.bucketKey);
+      }
+    });
+    return Array.from(keys).sort();
+  })();
 
   const toggleTaskCompletion = (taskId: string | Task) => {
     const targetId = typeof taskId === "string" ? taskId : taskId.id;
@@ -255,14 +253,61 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     }));
   };
 
-  const deleteTask = (taskId: string) => {
+  const deleteTask = (task: Task, scope: "single" | "all" = "single") => {
+    const targets =
+      scope === "all" && task.recurrenceGroupId
+        ? state.tasks.filter((t) => t.recurrenceGroupId === task.recurrenceGroupId)
+        : [task];
+    const targetIds = new Set(targets.map((item) => item.id));
     updateState((prev) => ({
       ...prev,
-      tasks: prev.tasks.filter((task) => task.id !== taskId),
+      tasks: prev.tasks.filter((t) => !targetIds.has(t.id)),
     }));
+    if (task.recurrenceGroupId) {
+      return;
+    }
+    const placeholders = targets.map((item) => {
+      const bucketKey = bucketKeyForTask(item);
+      const orderIndex = item.orderIndex ?? 0;
+      const timeoutId = setTimeout(() => {
+        setDeletedPlaceholders((prev) =>
+          prev.filter((placeholder) => placeholder.task.id !== item.id)
+        );
+      }, 7000);
+      return { task: item, bucketKey, orderIndex, timeoutId };
+    });
+    setDeletedPlaceholders((prev) => [
+      ...prev.filter((item) => !targetIds.has(item.task.id)),
+      ...placeholders,
+    ]);
   };
 
-  const UNSCHEDULED_BUCKET = "__unscheduled";
+  const requestDeleteTask = (task: Task) => {
+    if (task.recurrenceGroupId) {
+      setPendingRecurringDelete(task);
+      return;
+    }
+    deleteTask(task);
+  };
+
+  const confirmRecurringDeletion = (scope: "single" | "all") => {
+    if (!pendingRecurringDelete) return;
+    deleteTask(pendingRecurringDelete, scope);
+    setPendingRecurringDelete(null);
+  };
+
+  const cancelRecurringDelete = () => setPendingRecurringDelete(null);
+
+  const undoDelete = (taskId: string) => {
+    const placeholder = deletedPlaceholders.find((item) => item.task.id === taskId);
+    if (!placeholder) return;
+    clearTimeout(placeholder.timeoutId);
+    setDeletedPlaceholders((prev) => prev.filter((item) => item.task.id !== taskId));
+    updateState((prev) => ({
+      ...prev,
+      tasks: [...prev.tasks, placeholder.task],
+    }));
+  };
 
   const bucketKeyForTask = (task: Task) =>
     taskEffectiveDate(task) ?? UNSCHEDULED_BUCKET;
@@ -350,31 +395,6 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     }));
   };
 
-  const addTaskForSelectedDay = () => {
-    const title = newTaskTitle.trim();
-    if (!title || !selectedDate) return;
-    const now = new Date().toISOString();
-    const monthTag = monthLabel(parseDateKey(selectedDate));
-    updateState((prev) => ({
-      ...prev,
-      tasks: [
-        ...prev.tasks,
-        {
-          id: generateId(),
-          title,
-          status: "todo",
-          priority: "medium",
-          orderIndex: prev.tasks.length + 1,
-          scheduledFor: selectedDate,
-          scheduledDate: selectedDate,
-          month: monthTag,
-          createdAt: now,
-        },
-      ],
-    }));
-    setNewTaskTitle("");
-  };
-
   const moveTaskToBacklog = (taskId: string) => {
     updateState((prev) => ({
       ...prev,
@@ -393,32 +413,59 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
 
   const addBacklogTask = () => {
     if (!backlogTitle.trim()) return;
+    if (backlogRecurrence !== "none" && !backlogDueDate) {
+      setBacklogError("Must provide start date for recurring tasks");
+      return;
+    }
     const stamp = new Date().toISOString();
-    const monthTag = backlogDueDate
-      ? monthLabel(parseDateKey(backlogDueDate))
-      : nowMonthLabel();
-    updateState((prev) => ({
-      ...prev,
-      tasks: [
-        ...prev.tasks,
-        {
+    const cadence =
+      backlogRecurrence === "none" ? undefined : backlogRecurrence;
+    const startDate = backlogDueDate || todayDateKey;
+    const dates =
+      cadence && backlogDueDate
+        ? recurrenceDatesForYear(startDate, cadence)
+        : [startDate];
+    const recurrenceGroupId = cadence ? generateId() : undefined;
+    updateState((prev) => {
+      const orderStart = prev.tasks.length;
+      const newTasks: Task[] = dates.map((dateKey, index) => {
+        const monthTag = cadence
+          ? monthLabel(parseDateKey(dateKey))
+          : backlogDueDate
+            ? monthLabel(parseDateKey(backlogDueDate))
+            : nowMonthLabel();
+        const dueDateValue = cadence
+          ? dateKey
+          : backlogDueDate || undefined;
+        return {
           id: generateId(),
           title: backlogTitle.trim(),
           status: "todo",
           priority: "medium",
           goalId: backlogGoalId || undefined,
           backlogCategory: backlogCategory || undefined,
-          dueDate: backlogDueDate || undefined,
+          dueDate: dueDateValue,
+          scheduledFor: cadence ? dateKey : undefined,
+          scheduledDate: cadence ? dateKey : null,
           month: monthTag,
-          orderIndex: prev.tasks.length + 1,
+          recurrenceGroupId,
+          recurrenceCadence: cadence,
+          recurrenceStartDate: cadence ? startDate : undefined,
+          orderIndex: orderStart + index + 1,
           createdAt: stamp,
-        },
-      ],
-    }));
+        };
+      });
+      return {
+        ...prev,
+        tasks: [...prev.tasks, ...newTasks],
+      };
+    });
+    setBacklogError(null);
     setBacklogTitle("");
     setBacklogGoalId("");
     setBacklogCategory("");
     setBacklogDueDate("");
+    setBacklogRecurrence("none");
   };
 
   const handleSubmitNewTask = () => {
@@ -437,11 +484,13 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     handleSelectDate(dateKey, recenter);
     setDayModalDate(dateKey);
     setDayModalTaskTitle("");
+    setDayModalRecurrence("none");
   };
 
   const closeDayModal = () => {
     setDayModalDate(null);
     setDayModalTaskTitle("");
+    setDayModalRecurrence("none");
   };
 
   const addTaskForModalDate = () => {
@@ -449,25 +498,37 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
     const title = dayModalTaskTitle.trim();
     if (!title) return;
     const now = new Date().toISOString();
-    const monthTag = monthLabel(parseDateKey(dayModalDate));
-    updateState((prev) => ({
-      ...prev,
-      tasks: [
-        ...prev.tasks,
-        {
-          id: generateId(),
-          title,
-          status: "todo",
-          priority: "medium",
-          orderIndex: prev.tasks.length + 1,
-          scheduledFor: dayModalDate,
-          scheduledDate: dayModalDate,
-          month: monthTag,
+    const cadence =
+      dayModalRecurrence === "none" ? undefined : dayModalRecurrence;
+    const dates = cadence
+      ? recurrenceDatesForYear(dayModalDate, cadence)
+      : [dayModalDate];
+    const recurrenceGroupId = cadence ? generateId() : undefined;
+    updateState((prev) => {
+      const orderStart = prev.tasks.length;
+      return {
+        ...prev,
+        tasks: [
+          ...prev.tasks,
+          ...dates.map((dateKey, index) => ({
+            id: generateId(),
+            title,
+            status: "todo",
+            priority: "medium",
+            orderIndex: orderStart + index + 1,
+            scheduledFor: dateKey,
+            scheduledDate: dateKey,
+            month: monthLabel(parseDateKey(dateKey)),
+          recurrenceGroupId,
+          recurrenceCadence: cadence,
+          recurrenceStartDate: cadence ? dayModalDate : undefined,
           createdAt: now,
-        },
-      ],
-    }));
+          })),
+        ],
+      } as any;
+    });
     setDayModalTaskTitle("");
+    setDayModalRecurrence("none");
   };
 
   const handleTaskDrop = (dateKey: string) => {
@@ -550,8 +611,48 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
 
   const switchMode = (nextMode: PlannerMode) => {
     setMode(nextMode);
-    setAnchorDate(parseDateKey(selectedDate));
+    setAnchorDate(parseDateKey(currentSelectedDate));
   };
+
+  const combineTasksWithPlaceholders = (tasks: Task[], bucketKey: string) => {
+    const placeholders = deletedPlaceholders.filter(
+      (item) => item.bucketKey === bucketKey
+    );
+    const combined = [
+      ...tasks.map((task) => ({
+        kind: "task" as const,
+        orderIndex: task.orderIndex ?? 0,
+        task,
+      })),
+      ...placeholders.map((placeholder) => ({
+        kind: "placeholder" as const,
+        orderIndex: placeholder.orderIndex,
+        placeholder,
+      })),
+    ];
+    return combined.sort((a, b) => a.orderIndex - b.orderIndex);
+  };
+
+  const renderDeletedPlaceholder = (item: { task: Task }) => (
+    <div
+      key={`deleted-${item.task.id}`}
+      className="rounded-2xl border border-dashed border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700 shadow-sm"
+      role="button"
+      tabIndex={0}
+      onClick={() => undoDelete(item.task.id)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          undoDelete(item.task.id);
+        }
+      }}
+    >
+      <p className="font-semibold text-slate-900">Task deleted</p>
+      <p className="text-slate-600">
+        Click to undo and restore &ldquo;{item.task.title}&rdquo;.
+      </p>
+    </div>
+  );
 
   const weekdayLabels = useMemo(() => {
     const start = startOfWeek(new Date(), weekStart);
@@ -686,7 +787,9 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                 <>
                   <p
                     className={`font-medium ${
-                      isDone ? "text-emerald-800" : "text-slate-900"
+                      isDone
+                        ? "text-emerald-800 line-through decoration-emerald-600"
+                        : "text-slate-900"
                     }`}
                   >
                     {task.title}
@@ -753,7 +856,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                   </button>
                   <button
                     className="rounded-full p-2 text-red-500"
-                    onClick={() => deleteTask(task.id)}
+                    onClick={() => requestDeleteTask(task)}
                     aria-label="Delete task"
                   >
                     <TrashIcon className="h-4 w-4" />
@@ -826,7 +929,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                     className="w-full rounded-lg px-3 py-2 text-left text-red-500 transition hover:bg-red-50"
                     onClick={(event) => {
                       event.stopPropagation();
-                      deleteTask(task.id);
+                      requestDeleteTask(task);
                       setOpenTaskMenuId(null);
                     }}
                     data-task-menu-id={task.id}
@@ -841,6 +944,13 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
       </div>
     );
   };
+
+  const isRecurringWithoutStartDate =
+    backlogRecurrence !== "none" && !backlogDueDate;
+  const isSaveDisabled = !backlogTitle.trim() || isRecurringWithoutStartDate;
+  const recurringStartDateError = isRecurringWithoutStartDate
+    ? "Must provide start date for recurring tasks"
+    : null;
 
   return (
     <>
@@ -911,7 +1021,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
             <div className="grid grid-cols-2 md:grid-cols-7 gap-2">
               {weekDates.map((dateKey) => {
                 const dayTasks = tasksByDate[dateKey] ?? [];
-                const isSelected = selectedDate === dateKey;
+                const isSelected = currentSelectedDate === dateKey;
                 const isToday = today === dateKey;
                 const displayLabel = parseDateKey(dateKey).toLocaleDateString(undefined, {
                   weekday: "short",
@@ -985,7 +1095,7 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                 <div key={idx} className="grid grid-cols-2 md:grid-cols-7 gap-2">
                   {row.map((day) => {
                     const dayTasks = tasksByDate[day.key] ?? [];
-                    const isSelected = selectedDate === day.key;
+                    const isSelected = currentSelectedDate === day.key;
                     const isToday = today === day.key;
                     const displayLabel = parseDateKey(day.key).toLocaleDateString(undefined, {
                       weekday: "short",
@@ -1129,11 +1239,12 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
         </div>
         <div className="mt-6 space-y-4">
           {!showUnscheduledOnly &&
-            groupedTasks.sortedDates
+            sortedScheduledBuckets
               .filter((dateKey) => (hidePastDates ? dateKey >= todayDateKey : true))
               .map((dateKey) => {
               const dayTasks = groupedTasks.scheduled[dateKey] ?? [];
-              if (dayTasks.length === 0) return null;
+              const hasPlaceholder = placeholderBuckets.has(dateKey);
+              if (dayTasks.length === 0 && !hasPlaceholder) return null;
               const isPast = dateKey < todayDateKey;
               const isExpanded = !isPast || expandedPastDates[dateKey];
               return (
@@ -1165,13 +1276,19 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                   </div>
                   {isExpanded && (
                     <div className="mt-3 space-y-2">
-                      {dayTasks.map((task) => renderTaskRow(task))}
+                      {combineTasksWithPlaceholders(dayTasks, dateKey).map((item) =>
+                        item.kind === "task"
+                          ? renderTaskRow(item.task)
+                          : renderDeletedPlaceholder(item.placeholder)
+                      )}
                     </div>
                   )}
                 </div>
               );
             })}
-          {(groupedTasks.unscheduled.length > 0 || showUnscheduledOnly) && (
+          {(groupedTasks.unscheduled.length > 0 ||
+            placeholderBuckets.has(UNSCHEDULED_BUCKET) ||
+            showUnscheduledOnly) && (
             <div
               className="rounded-2xl border border-slate-200 bg-white p-4"
               onDragOver={(e) => e.preventDefault()}
@@ -1189,13 +1306,21 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                   {groupedTasks.unscheduled.length === 1 ? "task" : "tasks"}
                 </span>
               </div>
-              {groupedTasks.unscheduled.length === 0 ? (
+              {groupedTasks.unscheduled.length === 0 &&
+              !placeholderBuckets.has(UNSCHEDULED_BUCKET) ? (
                 <p className="mt-3 text-sm text-slate-500">
                   No unscheduled tasks right now.
                 </p>
               ) : (
                 <div className="mt-3 space-y-2">
-                  {groupedTasks.unscheduled.map((task) => renderTaskRow(task))}
+                  {combineTasksWithPlaceholders(
+                    groupedTasks.unscheduled,
+                    UNSCHEDULED_BUCKET
+                  ).map((item) =>
+                    item.kind === "task"
+                      ? renderTaskRow(item.task)
+                      : renderDeletedPlaceholder(item.placeholder)
+                  )}
                 </div>
               )}
             </div>
@@ -1239,6 +1364,19 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
               onChange={(e) => setDayModalTaskTitle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addTaskForModalDate()}
             />
+            <select
+              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+              value={dayModalRecurrence}
+              onChange={(e) =>
+                setDayModalRecurrence(e.target.value as RecurrenceChoice)
+              }
+            >
+              {recurrenceOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
             <button
               className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
               onClick={addTaskForModalDate}
@@ -1253,7 +1391,11 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                 No tasks scheduled for this day yet.
               </p>
             ) : (
-              dayModalTasks.map((task) => renderTaskRow(task))
+              combineTasksWithPlaceholders(dayModalTasks, dayModalDate).map((item) =>
+                item.kind === "task"
+                  ? renderTaskRow(item.task)
+                  : renderDeletedPlaceholder(item.placeholder)
+              )
             )}
           </div>
         </div>
@@ -1263,7 +1405,10 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
       <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
         <div
           className="absolute inset-0 bg-slate-900/40"
-          onClick={() => setIsCreateModalOpen(false)}
+          onClick={() => {
+            setIsCreateModalOpen(false);
+            setBacklogError(null);
+          }}
         />
         <div className="relative z-10 w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl">
           <div className="flex items-start justify-between">
@@ -1275,7 +1420,10 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
             </div>
             <button
               className="rounded-full border border-slate-200 px-3 py-1 text-sm font-semibold text-slate-600"
-              onClick={() => setIsCreateModalOpen(false)}
+              onClick={() => {
+                setIsCreateModalOpen(false);
+                setBacklogError(null);
+              }}
             >
               Close
             </button>
@@ -1310,21 +1458,88 @@ export const PlannerView = ({ state, updateState }: ViewProps) => {
                 type="date"
                 className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
                 value={backlogDueDate}
-                onChange={(e) => setBacklogDueDate(e.target.value)}
+                onChange={(e) => {
+                  setBacklogDueDate(e.target.value);
+                  setBacklogError(null);
+                }}
               />
             </div>
+            <select
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+              value={backlogRecurrence}
+              onChange={(e) =>
+                setBacklogRecurrence(e.target.value as RecurrenceChoice)
+              }
+            >
+              {recurrenceOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {backlogRecurrence !== "none" && (
+              <p className="text-xs text-slate-500">
+                We&apos;ll create repeating tasks for up to one year starting from the
+                due date.
+              </p>
+            )}
+            {recurringStartDateError && (
+              <p className="text-xs font-semibold text-red-600">
+                {recurringStartDateError}
+              </p>
+            )}
+            {!recurringStartDateError && backlogError && (
+              <p className="text-xs font-semibold text-red-600">{backlogError}</p>
+            )}
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               className="flex-1 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
               onClick={handleSubmitNewTask}
-              disabled={!backlogTitle.trim()}
+              disabled={isSaveDisabled}
             >
               Save task
             </button>
             <button
               className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600"
-              onClick={() => setIsCreateModalOpen(false)}
+              onClick={() => {
+                setIsCreateModalOpen(false);
+                setBacklogError(null);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+    </div>
+    )}
+    {pendingRecurringDelete && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div
+          className="absolute inset-0 bg-slate-900/40"
+          onClick={cancelRecurringDelete}
+        />
+        <div className="relative z-10 w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl">
+          <p className="text-xl font-semibold text-slate-900">Delete recurring task?</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Choose whether to delete just this task or every occurrence in the series.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              onClick={() => confirmRecurringDeletion("single")}
+            >
+              Delete just this one
+            </button>
+            <button
+              className="flex-1 rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500"
+              onClick={() => confirmRecurringDeletion("all")}
+            >
+              Delete all in series
+            </button>
+            <button
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600"
+              onClick={cancelRecurringDelete}
             >
               Cancel
             </button>

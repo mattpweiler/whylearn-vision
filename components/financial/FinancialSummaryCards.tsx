@@ -1,5 +1,6 @@
 "use client";
 
+import { CurrencyCode } from "@/lib/types";
 import { formatCurrency } from "./utils";
 
 interface FinancialSummaryCardsProps {
@@ -7,6 +8,7 @@ interface FinancialSummaryCardsProps {
   totalExpenses: number;
   netWorth: number;
   freedomScore: number;
+  currency: CurrencyCode;
 }
 
 export const FinancialSummaryCards = ({
@@ -14,6 +16,7 @@ export const FinancialSummaryCards = ({
   totalExpenses,
   netWorth,
   freedomScore,
+  currency,
 }: FinancialSummaryCardsProps) => {
   const netCashFlow = totalIncome - totalExpenses;
   const netColor =
@@ -26,7 +29,7 @@ export const FinancialSummaryCards = ({
       <div className="rounded-2xl bg-white p-4 shadow-sm">
         <p className="text-sm text-slate-500">Net Worth</p>
         <p className={`mt-1 text-2xl font-semibold ${netWorthColor}`}>
-          {formatCurrency(netWorth)}
+          {formatCurrency(netWorth, currency)}
         </p>
       </div>
       <div className="rounded-2xl bg-white p-4 shadow-sm">
@@ -38,13 +41,13 @@ export const FinancialSummaryCards = ({
       <div className="rounded-2xl bg-white p-4 shadow-sm">
         <p className="text-sm text-slate-500">Total Monthly Income</p>
         <p className="mt-1 text-2xl font-semibold text-slate-900">
-          {formatCurrency(totalIncome)}
+          {formatCurrency(totalIncome, currency)}
         </p>
       </div>
       <div className="rounded-2xl bg-white p-4 shadow-sm">
         <p className="text-sm text-slate-500">Net Monthly Cash Flow</p>
         <p className={`mt-1 text-2xl font-semibold ${netColor}`}>
-          {formatCurrency(netCashFlow)}
+          {formatCurrency(netCashFlow, currency)}
         </p>
       </div>
     </div>

@@ -1,13 +1,21 @@
 "use client";
 
-import { MouseEvent, useMemo, useState } from "react";
+import { MouseEvent, useEffect, useMemo, useState } from "react";
 import { AppState, Task } from "@/lib/types";
-import { todayKey, taskEffectiveDate, isTaskCompleted, generateId } from "@/lib/utils";
+import {
+  todayKey,
+  taskEffectiveDate,
+  isTaskCompleted,
+  generateId,
+  recurrenceDatesForYear,
+} from "@/lib/utils";
 
 interface ViewProps {
   state: AppState;
   updateState: (updater: (prev: AppState) => AppState) => void;
 }
+
+type RecurrenceChoice = "none" | "weekly" | "monthly";
 
 export const TodayView = ({ state, updateState }: ViewProps) => {
   const today = todayKey();
@@ -28,18 +36,36 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
   const [editingFocus, setEditingFocus] = useState(false);
 
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [quickTaskRecurrence, setQuickTaskRecurrence] =
+    useState<RecurrenceChoice>("none");
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskEdit, setTaskEdit] = useState({
     title: "",
   });
   const [openTaskMenuId, setOpenTaskMenuId] = useState<string | null>(null);
+  const [deletedPlaceholders, setDeletedPlaceholders] = useState<
+    { task: Task; timeoutId: ReturnType<typeof setTimeout> }[]
+  >([]);
+  const [pendingRecurringDelete, setPendingRecurringDelete] = useState<Task | null>(
+    null
+  );
 
   const habitDraftInitial = { name: "", description: "", lifeAreaId: "" };
   const [habitDraft, setHabitDraft] = useState(habitDraftInitial);
   const [editingHabitId, setEditingHabitId] = useState<string | null>(null);
   const [editingHabitName, setEditingHabitName] = useState("");
   const [showHabitForm, setShowHabitForm] = useState(false);
+  const recurrenceOptions: { value: RecurrenceChoice; label: string }[] = [
+    { value: "none", label: "Does not repeat" },
+    { value: "weekly", label: "Repeats weekly" },
+    { value: "monthly", label: "Repeats monthly" },
+  ];
+  useEffect(() => {
+    return () => {
+      deletedPlaceholders.forEach((item) => clearTimeout(item.timeoutId));
+    };
+  }, [deletedPlaceholders]);
 
   const saveFocus = () => {
     if (!focusDraft.trim()) return;
@@ -88,6 +114,46 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
     toggleTask(task);
   };
 
+  const combinedTodayItems = useMemo(
+    () =>
+      [
+        ...orderedTodaysTasks.map((task) => ({
+          kind: "task" as const,
+          orderIndex: task.orderIndex ?? 0,
+          task,
+        })),
+        ...deletedPlaceholders.map((placeholder) => ({
+          kind: "placeholder" as const,
+          orderIndex: placeholder.task.orderIndex ?? 0,
+          placeholder,
+        })),
+      ].sort((a, b) => a.orderIndex - b.orderIndex),
+    [deletedPlaceholders, orderedTodaysTasks]
+  );
+
+  const renderDeletedPlaceholder = (placeholder: { task: Task }) => (
+    <div
+      key={`deleted-${placeholder.task.id}`}
+      className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-3 text-sm shadow-sm"
+      role="button"
+      tabIndex={0}
+      onClick={() => undoDelete(placeholder.task.id)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          undoDelete(placeholder.task.id);
+        }
+      }}
+    >
+      <div className="flex flex-col">
+        <p className="font-semibold text-slate-900">Task deleted</p>
+        <p className="text-slate-600">
+          Click to undo and restore &ldquo;{placeholder.task.title}&rdquo;.
+        </p>
+      </div>
+    </div>
+  );
+
   const moveToTomorrow = (task: Task) => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -110,10 +176,54 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
     }));
   };
 
-  const deleteTask = (taskId: string) => {
+  const deleteTask = (task: Task, scope: "single" | "all" = "single") => {
+    const targets =
+      scope === "all" && task.recurrenceGroupId
+        ? state.tasks.filter((t) => t.recurrenceGroupId === task.recurrenceGroupId)
+        : [task];
+    const targetIds = new Set(targets.map((item) => item.id));
     updateState((prev) => ({
       ...prev,
-      tasks: prev.tasks.filter((task) => task.id !== taskId),
+      tasks: prev.tasks.filter((t) => !targetIds.has(t.id)),
+    }));
+    const placeholders = targets.map((item) => {
+      const timeoutId = setTimeout(() => {
+        setDeletedPlaceholders((prev) =>
+          prev.filter((placeholder) => placeholder.task.id !== item.id)
+        );
+      }, 7000);
+      return { task: item, timeoutId };
+    });
+    setDeletedPlaceholders((prev) => [
+      ...prev.filter((item) => !targetIds.has(item.task.id)),
+      ...placeholders,
+    ]);
+  };
+
+  const requestDeleteTask = (task: Task) => {
+    if (task.recurrenceGroupId) {
+      setPendingRecurringDelete(task);
+      return;
+    }
+    deleteTask(task);
+  };
+
+  const confirmRecurringDeletion = (scope: "single" | "all") => {
+    if (!pendingRecurringDelete) return;
+    deleteTask(pendingRecurringDelete, scope);
+    setPendingRecurringDelete(null);
+  };
+
+  const cancelRecurringDelete = () => setPendingRecurringDelete(null);
+
+  const undoDelete = (taskId: string) => {
+    const placeholder = deletedPlaceholders.find((item) => item.task.id === taskId);
+    if (!placeholder) return;
+    clearTimeout(placeholder.timeoutId);
+    setDeletedPlaceholders((prev) => prev.filter((item) => item.task.id !== taskId));
+    updateState((prev) => ({
+      ...prev,
+      tasks: [...prev.tasks, placeholder.task],
     }));
   };
 
@@ -147,23 +257,36 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
     const title = newTaskTitle.trim();
     if (!title) return;
     const now = new Date().toISOString();
-    updateState((prev) => ({
-      ...prev,
-      tasks: [
-        ...prev.tasks,
-        {
-          id: generateId(),
-          title,
-          status: "todo",
-          priority: "medium",
-          orderIndex: prev.tasks.length + 1,
-          scheduledFor: today,
-          scheduledDate: today,
-          createdAt: now,
-        },
-      ],
-    }));
+    const cadence =
+      quickTaskRecurrence === "none" ? undefined : quickTaskRecurrence;
+    const dates = cadence
+      ? recurrenceDatesForYear(today, cadence)
+      : [today];
+    const recurrenceGroupId = cadence ? generateId() : undefined;
+    updateState((prev) => {
+      const orderStart = prev.tasks.length;
+      return {
+        ...prev,
+        tasks: [
+          ...prev.tasks,
+          ...dates.map((dateKey, index) => ({
+            id: generateId(),
+            title,
+            status: "todo",
+            priority: "medium",
+            orderIndex: orderStart + index + 1,
+            scheduledFor: dateKey,
+            scheduledDate: dateKey,
+            recurrenceGroupId,
+            recurrenceCadence: cadence,
+            recurrenceStartDate: cadence ? today : undefined,
+            createdAt: now,
+          })),
+        ],
+      } as any;
+    });
     setNewTaskTitle("");
+    setQuickTaskRecurrence("none");
   };
 
   const startEdit = (task: Task) => {
@@ -345,7 +468,8 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
   };
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       {showCelebrationModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4">
           <div className="max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl">
@@ -442,7 +566,11 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
               forward.
             </div>
           )}
-          {orderedTodaysTasks.map((task) => {
+          {combinedTodayItems.map((item) => {
+            if (item.kind === "placeholder") {
+              return renderDeletedPlaceholder(item.placeholder);
+            }
+            const task = item.task;
             const index = Math.max(
               0,
               todaysTasks.findIndex((t) => t.id === task.id)
@@ -498,7 +626,9 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
                       <div>
                         <p
                           className={`font-medium ${
-                            isDone ? "text-emerald-800" : "text-slate-900"
+                            isDone
+                              ? "text-emerald-800 line-through decoration-emerald-600"
+                              : "text-slate-900"
                           }`}
                         >
                           {task.title}
@@ -529,7 +659,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
                     </button>
                     <button
                       className="cursor-pointer rounded-full px-3 py-1 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600"
-                      onClick={() => deleteTask(task.id)}
+                      onClick={() => requestDeleteTask(task)}
                     >
                       Delete
                     </button>
@@ -574,7 +704,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
                           className="w-full rounded-lg px-3 py-2 text-left text-red-500 transition hover:bg-red-50"
                           onClick={(event) => {
                             event.stopPropagation();
-                            deleteTask(task.id);
+                            requestDeleteTask(task);
                             setOpenTaskMenuId(null);
                           }}
                         >
@@ -588,7 +718,7 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
             );
           })}
         </div>
-        <div className="mt-4 flex gap-3">
+        <div className="mt-4 flex flex-wrap gap-3">
           <input
             className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm"
             placeholder="Add a quick task for today…"
@@ -596,6 +726,19 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
             onChange={(e) => setNewTaskTitle(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addQuickTask()}
           />
+          <select
+            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+            value={quickTaskRecurrence}
+            onChange={(e) =>
+              setQuickTaskRecurrence(e.target.value as RecurrenceChoice)
+            }
+          >
+            {recurrenceOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
           <button
             className="cursor-pointer rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
             onClick={addQuickTask}
@@ -760,5 +903,40 @@ export const TodayView = ({ state, updateState }: ViewProps) => {
         </div>
       </section>
     </div>
+    {pendingRecurringDelete && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div
+          className="absolute inset-0 bg-slate-900/40"
+          onClick={cancelRecurringDelete}
+        />
+        <div className="relative z-10 w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl">
+          <p className="text-xl font-semibold text-slate-900">Delete recurring task?</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Delete only this task or every task in the recurring series.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              onClick={() => confirmRecurringDeletion("single")}
+            >
+              Delete just this one
+            </button>
+            <button
+              className="flex-1 rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500"
+              onClick={() => confirmRecurringDeletion("all")}
+            >
+              Delete all in series
+            </button>
+            <button
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600"
+              onClick={cancelRecurringDelete}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };

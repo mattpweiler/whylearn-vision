@@ -32,6 +32,7 @@ export default function TermsOfServicePage() {
           <li>It does not provide financial, legal, tax, medical, psychological, or professional advice.</li>
           <li>Any financial information you enter is self-reported and for your own tracking only. You are responsible for your own financial and life decisions.</li>
           <li>We do not guarantee specific results or uninterrupted availability.</li>
+          <li>This is a work in progress—bugs and rough edges may appear. Please let us know if you spot any issues at <a className="font-semibold text-slate-900 underline" href="mailto:whylearnwednesdays@gmail.com">whylearnwednesdays@gmail.com</a>.</li>
         </ul>
       </section>
 
@@ -126,6 +127,7 @@ export default function TermsOfServicePage() {
           </a>
           .
         </p>
+        <p className="text-sm text-slate-500">WhyLearnTech LLC</p>
       </section>
     </main>
   );

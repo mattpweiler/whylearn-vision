@@ -3,6 +3,7 @@ import { AppState, AiMessageRole, ViewKey } from "@/lib/types";
 import { DEFAULT_LIFE_AREAS } from "@/lib/lifeAreas";
 import { currentTimezone, defaultSettings } from "@/lib/utils";
 import { normalizeGoalColor } from "@/lib/goalColors";
+import { normalizeCurrencyCode } from "@/lib/currency";
 
 type NullableRecord = Record<string, unknown> | null;
 
@@ -96,7 +97,7 @@ export const fetchSupabaseAppState = async (
     supabase
       .from("user_settings")
       .select(
-        "default_home_view, week_start_day, show_life_area_summary, auto_generate_tasks_from_ai"
+        "default_home_view, week_start_day, show_life_area_summary, auto_generate_tasks_from_ai, currency"
       )
       .eq("user_id", userId)
       .maybeSingle(),
@@ -112,7 +113,7 @@ export const fetchSupabaseAppState = async (
     supabase
       .from("goals")
       .select(
-        "id, title, description, life_area_id, status, priority, target_date, is_starred, color_hex, created_at"
+        "id, title, description, life_area_id, status, priority, target_date, is_starred, color_hex, metric_target, metric_opt_out, metric_manual_tracking, metric_manual_progress, created_at"
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
@@ -131,7 +132,7 @@ export const fetchSupabaseAppState = async (
     supabase
       .from("tasks")
       .select(
-        "id, title, description, status, priority, life_area_id, goal_id, habit_id, due_date, scheduled_for, order_index, created_at"
+        "id, title, description, status, priority, life_area_id, goal_id, habit_id, due_date, scheduled_for, recurrence_group_id, recurrence_cadence, recurrence_start_date, order_index, created_at"
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
@@ -141,7 +142,8 @@ export const fetchSupabaseAppState = async (
         "id, type, content, mood_score, energy_score, primary_life_area_id, created_at"
       )
       .eq("user_id", userId)
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .limit(10),
     supabase
       .from("daily_focus")
       .select("focus_date, note")
@@ -239,6 +241,10 @@ export const fetchSupabaseAppState = async (
       autoGenerateTasksFromAi:
         (settings?.auto_generate_tasks_from_ai as boolean | null) ??
         defaults.autoGenerateTasksFromAi,
+      currency: normalizeCurrencyCode(
+        (settings?.currency as string | null | undefined) ?? null,
+        defaults.currency
+      ),
     },
     lifeAreas: resolvedLifeAreas,
     lifeAreaScores: (scoresResult.data ?? []).map((item) => ({
@@ -259,6 +265,16 @@ export const fetchSupabaseAppState = async (
       isStarred: goal.is_starred ?? false,
       createdAt: goal.created_at,
       color: normalizeGoalColor(goal.color_hex),
+      metricTarget: goal.metric_target ?? undefined,
+      metricOptOut: goal.metric_opt_out ?? false,
+      metricManualTracking: goal.metric_manual_tracking ?? false,
+      metricManualProgress: (() => {
+        if (goal.metric_manual_progress === undefined || goal.metric_manual_progress === null) {
+          return undefined;
+        }
+        const parsed = Number(goal.metric_manual_progress);
+        return Number.isFinite(parsed) ? parsed : undefined;
+      })(),
     })),
     habits: (habitsResult.data ?? []).map((habit) => ({
       id: habit.id,
@@ -290,6 +306,9 @@ export const fetchSupabaseAppState = async (
       dueDate: task.due_date ?? undefined,
       scheduledFor: task.scheduled_for ?? undefined,
       scheduledDate: task.scheduled_for ?? null,
+      recurrenceGroupId: task.recurrence_group_id ?? undefined,
+      recurrenceCadence: task.recurrence_cadence ?? undefined,
+      recurrenceStartDate: task.recurrence_start_date ?? undefined,
       orderIndex: task.order_index ?? 0,
       createdAt: task.created_at,
     })),

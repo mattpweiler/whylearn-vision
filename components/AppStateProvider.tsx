@@ -45,6 +45,7 @@ const sampleGoals = () => [
     isStarred: true,
     createdAt: new Date().toISOString(),
     color: DEFAULT_GOAL_COLOR,
+    metricTarget: 12,
   },
   {
     id: generateId(),
@@ -59,6 +60,7 @@ const sampleGoals = () => [
     isStarred: false,
     createdAt: new Date().toISOString(),
     color: DEFAULT_GOAL_COLOR,
+    metricOptOut: true,
   },
 ];
 
@@ -189,8 +191,13 @@ export const AppStateProvider = ({
       const stored = window.localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed: AppState = JSON.parse(stored);
+        const mergedSettings = {
+          ...defaultSettings(),
+          ...(parsed.settings ?? {}),
+        };
         setState({
           ...parsed,
+          settings: mergedSettings,
           goals: withGoalColors(parsed.goals ?? []),
         });
       } else {

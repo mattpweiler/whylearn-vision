@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Line,
   LineChart,
@@ -45,6 +45,8 @@ import { generateItemId } from "@/components/financial/utils";
 import { useSupabase } from "@/components/providers/SupabaseProvider";
 import { useFinancialRecords } from "@/components/financial/useFinancialRecords";
 import { TrashIcon } from "@/components/financial/TrashIcon";
+import { useAppState } from "@/components/AppStateProvider";
+import { CurrencyCode } from "@/lib/types";
 
 const PageSection = ({ children }: { children: ReactNode }) => (
   <section className="space-y-6">{children}</section>
@@ -79,6 +81,22 @@ export const FinancialPlanner = ({
   const remoteData = useFinancialRecords(isAuthenticated && !readOnly);
   const [activeTab, setActiveTab] = useState<"projections" | "statements">(
     initialMode
+  );
+  const { state, updateState } = useAppState();
+  const currency = state.settings.currency;
+  const handleCurrencyChange = useCallback(
+    (nextCurrency: CurrencyCode) => {
+      if (readOnly) return;
+      updateState((prev) => ({
+        ...prev,
+        settings: { ...prev.settings, currency: nextCurrency },
+      }));
+    },
+    [readOnly, updateState]
+  );
+  const formatAmount = useCallback(
+    (value: number) => formatCurrency(value, currency),
+    [currency]
   );
   const SAMPLE_INCOMES: IncomeItem[] = [
     { id: "inc1", description: "Salary", amount: 8000, type: "income" },
@@ -320,7 +338,7 @@ export const FinancialPlanner = ({
           </div>
           <div className="flex items-center gap-3">
             <div className="text-sm font-semibold text-slate-900">
-              {formatCurrency(total)}
+              {formatAmount(total)}
             </div>
             <span className="text-lg font-semibold text-slate-400">
               {isOpen ? "-" : "+"}
@@ -390,6 +408,7 @@ export const FinancialPlanner = ({
               totalExpenses={totalExpenses}
               netWorth={netWorth}
               freedomScore={freedomScore.score}
+              currency={currency}
             />
           </PageSection>
 
@@ -402,6 +421,7 @@ export const FinancialPlanner = ({
                 <IncomeTable
                   items={incomes}
                   onChange={handleIncomeChange}
+                  currency={currency}
                   readOnly={readOnly}
                 />
               )}
@@ -412,6 +432,7 @@ export const FinancialPlanner = ({
                 <ExpenseTable
                   items={expenses}
                   onChange={handleExpenseChange}
+                  currency={currency}
                   readOnly={readOnly}
                 />
               )}
@@ -422,6 +443,7 @@ export const FinancialPlanner = ({
                 <AssetTable
                   items={assets}
                   onChange={handleAssetChange}
+                  currency={currency}
                   readOnly={readOnly}
                 />
               )}
@@ -432,6 +454,7 @@ export const FinancialPlanner = ({
                 <LiabilityTable
                   items={liabilities}
                   onChange={handleLiabilityChange}
+                  currency={currency}
                   readOnly={readOnly}
                 />
               )}
@@ -444,13 +467,15 @@ export const FinancialPlanner = ({
               onChange={handleSettingsChange}
               netCashFlow={netCashFlow}
               netWorth={netWorth}
+              currency={currency}
+              onCurrencyChange={handleCurrencyChange}
               readOnly={readOnly}
             />
             <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 text-slate-900 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-500">
-                    Freedom Score (Experimental - Not Advice)
+                    Freedom Score in USD (Experimental - Not Advice)
                   </p>
                   <p className="text-3xl font-bold text-slate-900">
                     {freedomScore.score}/100
@@ -514,6 +539,7 @@ export const FinancialPlanner = ({
               projectionYears={settings.projectionYears}
               inflationRate={settings.inflationRate}
               netCashFlow={netCashFlow}
+              currency={currency}
             />
           </PageSection>
         </>
@@ -521,6 +547,7 @@ export const FinancialPlanner = ({
         <MonthlyStatementsSection
           statements={statements}
           onChange={handleStatementsChange}
+          currency={currency}
           readOnly={readOnly}
         />
       )}
@@ -531,6 +558,7 @@ export const FinancialPlanner = ({
 interface MonthlyStatementsSectionProps {
   statements: MonthlyStatement[];
   onChange: (next: MonthlyStatement[]) => void;
+  currency: CurrencyCode;
   readOnly?: boolean;
 }
 
@@ -555,6 +583,7 @@ const expenseValue = (statement: MonthlyStatement) =>
 const MonthlyStatementsSection = ({
   statements,
   onChange,
+  currency,
   readOnly = false,
 }: MonthlyStatementsSectionProps) => {
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>(() => {
@@ -636,6 +665,10 @@ const MonthlyStatementsSection = ({
       return itemDate >= cutoff;
     });
   }, [chartData, chartRange]);
+  const formatAmount = useCallback(
+    (value: number) => formatCurrency(value, currency),
+    [currency]
+  );
 
   const handleFieldChange = (
     id: string,
@@ -862,12 +895,10 @@ const MonthlyStatementsSection = ({
                 <YAxis
                   stroke="#475569"
                   fontSize={12}
-                  tickFormatter={(value) => `$${Number(value).toLocaleString()}`}
+                  tickFormatter={(value) => formatAmount(Number(value))}
                 />
                 <Tooltip
-                  formatter={(value: number) =>
-                    formatCurrency(Number(value))
-                  }
+                  formatter={(value: number) => formatAmount(Number(value))}
                 />
                 {visibleSeries.expenses ? (
                   <Line
@@ -965,7 +996,7 @@ const MonthlyStatementsSection = ({
                         netProfit >= 0 ? "text-emerald-600" : "text-rose-500"
                       }`}
                     >
-                      {formatCurrency(netProfit)}
+                      {formatAmount(netProfit)}
                     </span>
                     <button
                       type="button"
@@ -1004,8 +1035,8 @@ const MonthlyStatementsSection = ({
                 {!isExpanded ? (
                   <div className="text-sm text-slate-600">
                     <p>
-                      Revenue: {formatCurrency(computedIncome)} · Expenses:{" "}
-                      {formatCurrency(computedExpenses)}
+                      Revenue: {formatAmount(computedIncome)} · Expenses:{" "}
+                      {formatAmount(computedExpenses)}
                     </p>
                   </div>
                 ) : (
@@ -1089,7 +1120,7 @@ const MonthlyStatementsSection = ({
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-emerald-700">
-                              {formatCurrency(computedIncome)}
+                              {formatAmount(computedIncome)}
                             </span>
                             <button
                               type="button"
@@ -1173,7 +1204,7 @@ const MonthlyStatementsSection = ({
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-rose-600">
-                              {formatCurrency(computedExpenses)}
+                              {formatAmount(computedExpenses)}
                             </span>
                             <button
                               type="button"

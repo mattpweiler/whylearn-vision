@@ -1,4 +1,5 @@
 import { Task, UserSettings } from "@/lib/types";
+import { DEFAULT_CURRENCY } from "@/lib/currency";
 
 export const STORAGE_KEY = "whylearn_Vision_state_v1";
 
@@ -101,6 +102,40 @@ export const normalizeDate = (date: Date) => {
   return copy;
 };
 
+const addMonthsSafe = (date: Date, months: number) => {
+  const next = new Date(date);
+  const targetDay = next.getDate();
+  next.setDate(1);
+  next.setMonth(next.getMonth() + months);
+  const lastDayOfMonth = new Date(
+    next.getFullYear(),
+    next.getMonth() + 1,
+    0
+  ).getDate();
+  next.setDate(Math.min(targetDay, lastDayOfMonth));
+  return next;
+};
+
+export const recurrenceDatesForYear = (
+  startDate: string,
+  cadence: "weekly" | "monthly"
+) => {
+  const start = parseLocalDateValue(startDate);
+  if (!start) return [];
+  const end = new Date(start);
+  end.setFullYear(end.getFullYear() + 1);
+  const dates: string[] = [];
+  let cursor = new Date(start);
+  while (cursor <= end) {
+    dates.push(formatDateKey(cursor));
+    cursor =
+      cadence === "weekly"
+        ? normalizeDate(new Date(cursor.getTime() + 7 * 24 * 60 * 60 * 1000))
+        : normalizeDate(addMonthsSafe(cursor, 1));
+  }
+  return dates;
+};
+
 export const isWithinRange = (value?: string, start?: string, end?: string) => {
   if (!value || !start || !end) return false;
   return value >= start && value <= end;
@@ -150,4 +185,5 @@ export const defaultSettings = (): UserSettings => ({
   weekStartDay: 1,
   showLifeAreaSummaryOnToday: true,
   autoGenerateTasksFromAi: false,
+  currency: DEFAULT_CURRENCY,
 });

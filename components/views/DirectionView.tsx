@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppState } from "@/lib/types";
 import { formatDisplayDate, generateId, todayKey } from "@/lib/utils";
 
@@ -82,9 +82,31 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
     }));
   };
 
-  const recentReflections = [...state.reflections]
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-    .slice(0, 25);
+  const [reflections, setReflections] = useState(() =>
+    [...state.reflections].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  );
+  const [visibleCount, setVisibleCount] = useState(10);
+  const [hasMore, setHasMore] = useState(state.reflections.length >= 10);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const sortedReflections = useMemo(
+    () => reflections.slice(0),
+    [reflections]
+  );
+  const visibleReflections = sortedReflections.slice(0, visibleCount);
+
+  const resetFromState = () => {
+    const sorted = [...state.reflections].sort((a, b) =>
+      a.createdAt < b.createdAt ? 1 : -1
+    );
+    setReflections(sorted);
+    setVisibleCount(10);
+    setHasMore(sorted.length >= 10);
+  };
+
+  useEffect(() => {
+    resetFromState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.reflections]);
 
   const toggleReflectionExpansion = (id: string) => {
     setExpandedReflectionIds((prev) =>
@@ -138,16 +160,19 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
       ...prev,
       reflections: prev.reflections.filter((reflection) => reflection.id !== reflectionId),
     }));
+    setReflections((prev) => prev.filter((reflection) => reflection.id !== reflectionId));
   };
 
   const addReflection = () => {
     if (!reflectionNote.trim()) return;
+    const newId = generateId();
+    const createdAt = new Date().toISOString();
     updateState((prev) => ({
       ...prev,
       reflections: [
         ...prev.reflections,
         {
-          id: generateId(),
+          id: newId,
           type: reflectionType as "weekly" | "daily",
           content: {
             note: reflectionNote.trim(),
@@ -155,13 +180,49 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
             dayQuality,
           },
           moodScore: dayQuality,
-          createdAt: new Date().toISOString(),
+          createdAt,
         },
       ],
     }));
+    setReflections((prev) => [
+      {
+        id: newId,
+        type: reflectionType as "weekly" | "daily",
+        content: {
+          note: reflectionNote.trim(),
+          date: reflectionDate,
+          dayQuality,
+        },
+        moodScore: dayQuality,
+        createdAt,
+      },
+      ...prev,
+    ]);
     setReflectionNote("");
     setDayQuality(5);
     setReflectionDate(todayKey());
+  };
+
+  const loadMoreReflections = async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      const response = await fetch(
+        `/api/reflections?offset=${reflections.length}&limit=10`
+      );
+      if (!response.ok) throw new Error("Failed to load more reflections");
+      const payload = await response.json();
+      setReflections((prev) => [
+        ...prev,
+        ...(payload.reflections ?? []),
+      ]);
+      setHasMore(Boolean(payload.hasMore));
+      setVisibleCount((prev) => prev + (payload.reflections?.length ?? 0));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
   return (
@@ -206,8 +267,12 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-lg font-semibold text-slate-900">Reflections</p>
-          <div className="mt-4 space-y-3">
-          {recentReflections.map((reflection) => {
+          <div
+            className={`mt-4 space-y-3 ${
+              sortedReflections.length > 5 ? "max-h-[520px] overflow-y-auto pr-2" : ""
+            }`}
+          >
+          {visibleReflections.map((reflection) => {
             const isExpanded = expandedReflectionIds.includes(reflection.id);
             const isEditing = editingReflectionId === reflection.id;
             const content = reflection.content ?? {};
@@ -366,10 +431,22 @@ export const DirectionView = ({ state, updateState }: ViewProps) => {
                 </div>
               );
             })}
-            {recentReflections.length === 0 && (
+            {sortedReflections.length === 0 && (
               <p className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
                 No reflections yet.
               </p>
+            )}
+            {hasMore && (
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                  onClick={loadMoreReflections}
+                  disabled={isLoadingMore}
+                >
+                  {isLoadingMore ? "Loading…" : "Load more"}
+                </button>
+              </div>
             )}
           </div>
         </div>

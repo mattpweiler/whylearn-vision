@@ -198,7 +198,7 @@ export default function LandingPage() {
         </div>
       </main>
       <footer className="mx-auto w-full max-w-4xl px-6 py-10 text-center text-sm text-slate-500">
-        WhyLearnTech 2026
+        WhyLearnTech LLC 2026
       </footer>
 
       {activePeek ? (

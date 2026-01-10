@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { CurrencyCode } from "@/lib/types";
 import { formatCurrency } from "./utils";
 
 interface NetWorthProjectionChartProps {
@@ -18,6 +19,7 @@ interface NetWorthProjectionChartProps {
   annualReturnRate: number;
   projectionYears: number;
   inflationRate: number;
+  currency: CurrencyCode;
 }
 
 interface ProjectionPoint {
@@ -71,6 +73,7 @@ export const NetWorthProjectionChart = ({
   annualReturnRate,
   projectionYears,
   inflationRate,
+  currency,
 }: NetWorthProjectionChartProps) => {
   const data = buildProjectionData(
     currentNetWorth,
@@ -89,7 +92,7 @@ export const NetWorthProjectionChart = ({
         <p className="text-sm text-slate-500">
           {projectionYears} year outlook ending at{" "}
           <span className="font-semibold">
-            {formatCurrency(lastPoint?.netWorth ?? currentNetWorth)}
+            {formatCurrency(lastPoint?.netWorth ?? currentNetWorth, currency)}
           </span>
         </p>
       </div>
@@ -107,14 +110,14 @@ export const NetWorthProjectionChart = ({
               tickFormatter={(value: number) => `${value} yr`}
             />
             <YAxis
-              tickFormatter={(value) => formatCurrency(value as number)}
+              tickFormatter={(value) => formatCurrency(value as number, currency)}
               tickLine={false}
               axisLine={false}
               width={90}
               tick={{ fill: "#475569", fontSize: 12 }}
             />
             <Tooltip
-              formatter={(value: number) => formatCurrency(value)}
+              formatter={(value: number) => formatCurrency(value, currency)}
               labelFormatter={(label: string, payload) => {
                 const point = payload?.[0]?.payload as ProjectionPoint | undefined;
                 return point ? `Year ${point.year.toFixed(1)}` : label;
