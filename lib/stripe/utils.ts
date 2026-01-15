@@ -3,11 +3,15 @@ export const isSubscriptionActive = (
   currentPeriodEnd?: string | null
 ) => {
   if (!status) return false;
-  const active = status === "active" || status === "trialing";
-  if (!active) return false;
-  if (!currentPeriodEnd) return true;
-  const expiresAt = new Date(currentPeriodEnd).getTime();
-  return Number.isFinite(expiresAt) && expiresAt > Date.now();
+
+  const normalizedStatus = status.toLowerCase();
+  const activeStatuses = new Set(["active", "trialing", "past_due"]);
+
+  // Temporarily ignore currentPeriodEnd because stale values have been
+  // ejecting valid subscribers after renewal; rely solely on Stripe status.
+  if (activeStatuses.has(normalizedStatus)) return true;
+
+  return false;
 };
 
 export const resolveAppBaseUrl = (fallback?: string) => {
