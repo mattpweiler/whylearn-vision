@@ -132,21 +132,8 @@ export const AppShell = () => {
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900">
       <Sidebar current={currentView} onSelect={handleSelectView} />
-      <main className="flex flex-1 flex-col gap-6 px-4 py-6 lg:px-10">
-        <div className="flex items-center justify-between lg:hidden">
-          <MobileMenu
-            currentView={currentView}
-            onSelect={handleSelectView}
-            isDemo={isDemo}
-            comingSoonView={COMING_SOON_VIEW}
-            compact
-          />
-          <MobileActions
-            profileName={state.profile.displayName}
-            onGoToSettings={() => handleSelectView("settings")}
-          />
-        </div>
-        <div className="hidden lg:block">
+      <main className="flex flex-col w-full">
+        <div className="hidden lg:block sticky top-0">
           <PageHeader
             title={currentView === "today" ? todayLabel : activeMeta.title}
             subtitle={activeMeta.subtitle}
@@ -154,7 +141,22 @@ export const AppShell = () => {
             onGoToSettings={() => handleSelectView("settings")}
           />
         </div>
-        <section>{viewComponent}</section>
+        <div className="flex flex-1 flex-col gap-6 px-4 py-6 lg:px-10">
+          <div className="flex items-center justify-between lg:hidden">
+            <MobileMenu
+              currentView={currentView}
+              onSelect={handleSelectView}
+              isDemo={isDemo}
+              comingSoonView={COMING_SOON_VIEW}
+              compact
+            />
+            <MobileActions
+              profileName={state.profile.displayName}
+              onGoToSettings={() => handleSelectView("settings")}
+            />
+          </div>
+          <section>{viewComponent}</section>
+        </div>
       </main>
     </div>
   );
