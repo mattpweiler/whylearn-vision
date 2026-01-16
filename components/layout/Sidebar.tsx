@@ -32,7 +32,7 @@ export const Sidebar = ({
   const isDemo = mode === "demo";
 
   return (
-    <aside className="hidden w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex">
+    <aside className="h-dvh hidden w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex sticky top-0">
       <div className="px-2">
         <p className="text-lg font-semibold text-slate-900">WhyLearn Vision</p>
         <p className="text-sm text-slate-500">
